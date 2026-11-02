@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#244d3e">
-  <title>Update Walk Advisor</title>
+  <title>Update Walk Window</title>
   <style>
     :root{font-family:system-ui,sans-serif;color:#203c30;background:#f5f6f2;color-scheme:light dark}
     body{max-width:32rem;padding:1.5rem;margin:2rem auto;line-height:1.6}
@@ -14,11 +14,11 @@
   </style>
 </head>
 <body>
-  <h1>Update Walk Advisor</h1>
+  <h1>Update Walk Window</h1>
   <p>Download the latest app without clearing your saved location or forecast.</p>
   <button id="update" type="button">Check and update</button>
   <p id="status" role="status" aria-live="polite"></p>
-  <a href="./">Return to Walk Advisor</a>
+  <a href="./">Return to Walk Window</a>
   <script>
     const button = document.querySelector('#update');
     const status = document.querySelector('#status');
@@ -70,7 +70,7 @@
           const ready = await during(navigator.serviceWorker.ready, attempt.signal);
           if (ready.active) await workerState(ready.active, ['activated'], attempt.signal);
         }
-        status.textContent = 'The app is updated. Opening Walk Advisor…';
+        status.textContent = 'The app is updated. Opening Walk Window…';
         location.replace('./');
       } catch (error) {
         status.textContent = error.message || 'Could not update. Check your connection and try again.';

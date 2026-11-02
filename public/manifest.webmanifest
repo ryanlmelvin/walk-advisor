@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "Walk Advisor",
-  "short_name": "Walk Advisor",
+  "name": "Walk Window",
+  "short_name": "Walk Window",
   "description": "Find upcoming walk times with lower precipitation, air pollution, UV, and temperature.",
   "start_url": "./",
   "scope": "./",

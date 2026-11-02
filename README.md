@@ -1,4 +1,4 @@
-# Walk Advisor
+# Walk Window
 
 A small, installable web app that compares upcoming dog-walking hours using precipitation, US AQI, UV index, and temperature. It runs entirely in the browser with free public APIs and no API key.
 

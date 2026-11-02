@@ -20,4 +20,4 @@ createServer(async (request, response) => {
     response.writeHead(200, { 'Content-Type': types[extname(path)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
     response.end(request.method === 'HEAD' ? undefined : content);
   } catch { response.writeHead(404).end('Not found'); }
-}).listen(port, host, () => console.log(`Walk Advisor: http://${host}:${port}${prefix}`));
+}).listen(port, host, () => console.log(`Walk Window: http://${host}:${port}${prefix}`));

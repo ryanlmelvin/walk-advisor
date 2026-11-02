@@ -44,4 +44,4 @@ for (const [name, buffer] of sources) {
 const precache = [...names.values()].filter(name => name !== 'update.html').sort();
 await writeFile(resolve(dist, 'sw.js'), workerTemplate.replace('__RELEASE__', release).replace('__PRECACHE__', JSON.stringify(precache)));
 await writeFile(resolve(dist, 'release.json'), JSON.stringify({ version: release }) + '\n');
-console.log(`Built Walk Advisor ${release} in dist/`);
+console.log(`Built Walk Window ${release} in dist/`);
