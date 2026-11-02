@@ -264,7 +264,7 @@ test('build hashes module references, includes complete shell, and changes with 
     const sw = await readFile(resolve(root, 'dist/sw.js'), 'utf8');
     assert.ok(sw.includes(`app.${version}.js`));
     assert.ok(!sw.includes('"update.html"'));
-    assert.ok((await readdir(resolve(root, 'dist/icons'))).includes('icon-512.png'));
+    assert.ok((await readdir(resolve(root, 'dist/icons'))).includes('window-512.png'));
     assert.equal(await readFile(resolve(root, 'dist/LICENSE.txt'), 'utf8'), await readFile(resolve(root, 'LICENSE'), 'utf8'));
     build();
     assert.equal(JSON.parse(await readFile(resolve(root, 'dist/release.json'), 'utf8')).version, version);
