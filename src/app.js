@@ -1,10 +1,29 @@
 import { fetchForecast, searchLocations } from './forecast.js';
-import { analyzeForecast } from './ranking.js';
+import { analyzeForecast, isWithinWalkingHours, isWithinCutoffs } from './ranking.js';
 import { initPwa } from './pwa.js';
 
 const $ = (id) => document.getElementById(id);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 const storageKey = `walk-advisor:${new URL('.', location.href).pathname}:forecast-v1`;
+const hoursStorageKey = `walk-advisor:${new URL('.', location.href).pathname}:walking-hours-v1`;
+const cutoffsStorageKey = `walk-advisor:${new URL('.', location.href).pathname}:cutoffs-v1`;
+const cutoffFields = { minTemperature: 'minimum-temperature', maxTemperature: 'maximum-temperature', maxPrecipitationProbability: 'maximum-precipitation', maxAqi: 'maximum-aqi', maxUv: 'maximum-uv' };
+let cutoffs = { minTemperature: 32, maxTemperature: 80, maxPrecipitationProbability: 33, maxAqi: 50, maxUv: 5 };
+let walkingHours = { earliest: '08:00', latest: '21:00' };
+try {
+  const saved = JSON.parse(localStorage.getItem(hoursStorageKey) || 'null');
+  if (/^([01]\d|2[0-3]):[0-5]\d$/.test(saved?.earliest) && /^([01]\d|2[0-3]):[0-5]\d$/.test(saved?.latest) && saved.earliest <= saved.latest) walkingHours = saved;
+} catch { /* Default walking hours remain available without storage. */ }
+$('earliest-time').value = walkingHours.earliest;
+$('latest-time').value = walkingHours.latest;
+try {
+  const saved = JSON.parse(localStorage.getItem(cutoffsStorageKey) || 'null');
+  if (saved && Object.keys(cutoffFields).every((key) => saved[key] === null || (typeof saved[key] === 'number' && Number.isFinite(saved[key])))
+    && (saved.minTemperature === null || saved.maxTemperature === null || saved.minTemperature <= saved.maxTemperature)
+    && (saved.maxPrecipitationProbability === null || (saved.maxPrecipitationProbability >= 0 && saved.maxPrecipitationProbability <= 100))
+    && (saved.maxAqi === null || saved.maxAqi >= 0) && (saved.maxUv === null || saved.maxUv >= 0)) cutoffs = saved;
+} catch { /* Defaults remain available without storage. */ }
+for (const [key, id] of Object.entries(cutoffFields)) $(id).value = cutoffs[key] ?? '';
 let forecast = null;
 let view = 'day';
 let selectedDate = null;
@@ -60,7 +79,7 @@ function recommendation(period, key, showDate) {
   const hour = period.best;
   return `<article class="recommendation" aria-label="${name}"><h3 class="card-heading">${icons[key]}${name}</h3>${hour
     ? `<p class="walk-time">${timeLabel(hour.time)}</p>${showDate ? `<p class="walk-date">${dateLabel(hour.time)}</p>` : ''}${metrics(hour)}${period.complete ? '' : '<p class="card-note">Weather-only · AQI unavailable</p>'}`
-    : `<p class="no-pick">${escape(period.reason || 'No hours with all four readings available.')}</p>`}</article>`;
+    : `<p class="no-pick">${escape(period.reason || 'No matching hours.')}</p>`}</article>`;
 }
 
 function timeRanges(hours, includeDate) {
@@ -91,13 +110,15 @@ function eligibleHours(now, date = null) {
   return forecast.hours.filter((hour) => {
     const day = days.get(hour.date);
     return hour.time >= now && (!date || hour.date === date) && numeric(day?.sunrise)
-      && numeric(day?.sunset) && day.sunset > day.sunrise && hour.time >= day.sunrise;
+      && numeric(day?.sunset) && day.sunset > day.sunrise && hour.time >= day.sunrise
+      && isWithinWalkingHours(hour, forecast.location.timezone, walkingHours)
+      && isWithinCutoffs(hour, cutoffs, { allowMissingAqi: true });
   });
 }
 
 function renderHourly(hours, minima) {
   const metricCell = (hour, metric, suffix = '', digits = 0) => `<td${numeric(hour[metric]) && hour[metric] === minima[metric]?.value ? ' class="lowest" title="Lowest value in this range"' : ''}>${valueLabel(hour[metric], suffix, digits)}</td>`;
-  $('hourly-table').innerHTML = hours.length ? `<table><thead><tr><th scope="col">Hour</th><th scope="col">Rain / snow</th><th scope="col">Amount</th><th scope="col">US AQI</th><th scope="col">UV</th><th scope="col">Temp</th></tr></thead><tbody>${hours.map((hour) => `<tr><th scope="row">${view === 'week' ? format(hour.time, { weekday: 'short' }) + ' ' : ''}${timeLabel(hour.time)}</th>${metricCell(hour, 'precipitationProbability', '%')}${metricCell(hour, 'precipitation', ' mm', 2)}${metricCell(hour, 'aqi')}${metricCell(hour, 'uv', '', 1)}${metricCell(hour, 'temperature', '°F', 1)}</tr>`).join('')}</tbody></table>` : '<p class="small muted" style="padding:14px">No upcoming hours in this range.</p>';
+  $('hourly-table').innerHTML = hours.length ? `<table><thead><tr><th scope="col">Hour</th><th scope="col">Rain / snow</th><th scope="col">Amount</th><th scope="col">US AQI</th><th scope="col">UV</th><th scope="col">Temp</th></tr></thead><tbody>${hours.map((hour) => `<tr><th scope="row">${view === 'week' ? format(hour.time, { weekday: 'short' }) + ' ' : ''}${timeLabel(hour.time)}</th>${metricCell(hour, 'precipitationProbability', '%')}${metricCell(hour, 'precipitation', ' mm', 2)}${metricCell(hour, 'aqi')}${metricCell(hour, 'uv', '', 1)}${metricCell(hour, 'temperature', '°F', 1)}</tr>`).join('')}</tbody></table>` : '<p class="small muted" style="padding:14px">No matching hours.</p>';
 }
 
 function renderWeek(analysis) {
@@ -111,7 +132,7 @@ function renderWeek(analysis) {
 function render() {
   if (!forecast) return;
   const now = Date.now();
-  const analysis = analyzeForecast(forecast, now);
+  const analysis = analyzeForecast(forecast, now, walkingHours, cutoffs);
   if (!analysis.days.some((day) => day.date === selectedDate)) selectedDate = analysis.days[0]?.date;
   const day = analysis.days.find((item) => item.date === selectedDate);
   if (!day) return;
@@ -133,11 +154,13 @@ function render() {
     renderWeek(analysis);
   }
   const shownHours = eligibleHours(now, view === 'day' ? selectedDate : null);
-  const minima = view === 'week' ? analysis.minima : analyzeForecast({ ...forecast, hours: forecast.hours.filter((hour) => hour.date === selectedDate) }, now).minima;
+  $('minima-section').hidden = shownHours.length === 0;
+  $('hourly-details').hidden = shownHours.length === 0;
+  const minima = view === 'week' ? analysis.minima : analyzeForecast({ ...forecast, hours: forecast.hours.filter((hour) => hour.date === selectedDate) }, now, walkingHours, cutoffs).minima;
   renderMinima(minima);
   renderHourly(shownHours, minima);
   const unavailable = shownHours.some((hour) => !numeric(hour.aqi));
-  $('coverage-note').textContent = unavailable ? 'AQI is unavailable for some hours. Weather-only times omit air quality.' : '';
+  $('coverage-note').textContent = unavailable ? 'Weather-only picks lack AQI.' : '';
   $('coverage-note').hidden = !unavailable;
   const ageHours = (now - forecast.fetchedAt) / 3600000;
   const saved = refreshFailed || !navigator.onLine || ageHours >= 1;
@@ -151,6 +174,16 @@ function render() {
 function saveForecast() {
   if (!forecast) return true;
   try { localStorage.setItem(storageKey, JSON.stringify({ version: 1, forecast })); return true; }
+  catch { return false; }
+}
+
+function saveWalkingHours() {
+  try { localStorage.setItem(hoursStorageKey, JSON.stringify(walkingHours)); return true; }
+  catch { return false; }
+}
+
+function saveCutoffs() {
+  try { localStorage.setItem(cutoffsStorageKey, JSON.stringify(cutoffs)); return true; }
   catch { return false; }
 }
 
@@ -269,6 +302,30 @@ for (const id of ['day-picker', 'week-table']) $(id).addEventListener('click', (
 });
 
 $('menu-button').addEventListener('click', () => $('app-dialog').showModal());
+$('walking-hours-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const earliest = $('earliest-time').value, latest = $('latest-time').value;
+  if (!earliest || !latest || latest < earliest) {
+    dialogStatus('Latest must be at or after earliest on the same day.');
+    $('latest-time').focus();
+    return;
+  }
+  const nextCutoffs = Object.fromEntries(Object.entries(cutoffFields).map(([key, id]) => [key, $(id).value.trim() === '' ? null : Number($(id).value)]));
+  if (nextCutoffs.minTemperature !== null && nextCutoffs.maxTemperature !== null && nextCutoffs.minTemperature > nextCutoffs.maxTemperature) {
+    dialogStatus('Maximum temperature must be at or above the minimum.');
+    $('maximum-temperature').focus();
+    return;
+  }
+  walkingHours = { earliest, latest };
+  cutoffs = nextCutoffs;
+  const hoursSaved = saveWalkingHours(), cutoffsSaved = saveCutoffs();
+  if (hoursSaved && cutoffsSaved) {
+    dialogStatus('Preferences saved.');
+  } else {
+    dialogStatus('Applied for this visit. Couldn’t save on this device.');
+  }
+  render();
+});
 $('close-dialog').addEventListener('click', () => $('app-dialog').close());
 $('method-button').addEventListener('click', () => { $('method-details').open = true; $('app-dialog').showModal(); });
 $('app-dialog').addEventListener('click', (event) => { if (event.target === $('app-dialog') && (event.clientX < $('app-dialog').getBoundingClientRect().left || event.clientX > $('app-dialog').getBoundingClientRect().right || event.clientY < $('app-dialog').getBoundingClientRect().top || event.clientY > $('app-dialog').getBoundingClientRect().bottom)) $('app-dialog').close(); });
@@ -278,12 +335,11 @@ const pwa = initPwa({
   onStatus: (message) => { dialogStatus(message); if (!$('app-dialog').open && message) setStatus(message); },
   onInstallAvailable: (available) => { installAvailable = available; },
   beforeUpdate: async () => {
-    if (saveForecast()) return true;
-    dialogStatus('Could not save your current location and forecast. Try updating again when browser storage is available.');
+    if (saveForecast() && saveWalkingHours() && saveCutoffs()) return true;
+    dialogStatus('Could not save your current preferences and forecast. Try updating again when browser storage is available.');
     return false;
   },
 });
-$('check-update').addEventListener('click', () => pwa.checkForUpdate({ force: true }));
 for (const id of ['update-button', 'dialog-update']) $(id).addEventListener('click', () => pwa.applyUpdate());
 $('install-button').addEventListener('click', async () => {
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) dialogStatus('You’re already using the installed app.');

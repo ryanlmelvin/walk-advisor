@@ -46,24 +46,38 @@
         <p id="coverage-note" class="notice" hidden></p>
         <div id="recommendations" class="recommendations"></div>
         <div id="week-table" class="week-table" hidden></div>
-        <section class="minima-section" aria-labelledby="minima-heading">
+        <section id="minima-section" class="minima-section" aria-labelledby="minima-heading">
           <h2 id="minima-heading">Lowest hours</h2>
           <div id="minima" class="minima"></div>
         </section>
-        <details id="hourly-details" class="hourly-details"><summary>All upcoming hours</summary><div id="hourly-table" class="table-scroll" tabindex="0" role="region" aria-label="Hourly forecast"></div></details>
+        <details id="hourly-details" class="hourly-details"><summary>Matching hours</summary><div id="hourly-table" class="table-scroll" tabindex="0" role="region" aria-label="Hourly forecast"></div></details>
         <p class="source-line"><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noreferrer">CAMS</a><button id="method-button" class="text-button">How times are picked</button></p>
       </section>
     </main>
     <dialog id="app-dialog" aria-labelledby="dialog-heading">
       <div class="dialog-heading"><h2 id="dialog-heading">App options</h2><button id="close-dialog" class="icon-button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
-      <div class="dialog-actions"><button id="install-button">Install app</button><button id="check-update">Check for updates</button><button id="dialog-update" class="primary" hidden>Update now</button></div>
+      <form id="walking-hours-form" class="walking-hours-form">
+        <h3>Walk start times</h3>
+        <div class="time-inputs"><label for="earliest-time">Earliest<input id="earliest-time" type="time" value="08:00" required></label><label for="latest-time">Latest<input id="latest-time" type="time" value="21:00" required></label></div>
+        <h3 class="cutoffs-heading">Cutoffs</h3>
+        <p class="small muted cutoff-help">Blank means no limit.</p>
+        <div class="cutoff-inputs">
+          <label for="minimum-temperature">Min temperature (°F)<input id="minimum-temperature" type="number" step="any" value="32" placeholder="No limit"></label>
+          <label for="maximum-temperature">Max temperature (°F)<input id="maximum-temperature" type="number" step="any" value="80" placeholder="No limit"></label>
+          <label for="maximum-precipitation">Max precipitation (%)<input id="maximum-precipitation" type="number" min="0" max="100" step="any" value="33" placeholder="No limit"></label>
+          <label for="maximum-aqi">Max US AQI<input id="maximum-aqi" type="number" min="0" step="any" value="50" placeholder="No limit"></label>
+          <label for="maximum-uv">Max UV index<input id="maximum-uv" type="number" min="0" step="any" value="5" placeholder="No limit"></label>
+        </div>
+        <button type="submit">Save preferences</button>
+      </form>
+      <div class="dialog-actions"><button id="install-button">Install app</button><button id="dialog-update" class="primary" hidden>Update now</button></div>
       <p id="dialog-status" class="small" role="status" hidden></p>
       <details id="method-details">
         <summary>How times are picked</summary>
         <p>Each upcoming hourly point gets equal weight for precipitation, US AQI, UV, and temperature. Lower is better. Precipitation combines chance and amount. We compare percentile ranks across the forecast; ties go to the earliest hour.</p>
-        <p>Before sunset covers sunrise to sunset. After sunset covers sunset to local midnight. Times use the forecast location’s time zone. Temperature and AQI are at the suggested start; precipitation and average UV cover the following hour. Forecasts do not guarantee conditions throughout a walk.</p>
-        <p>No temperature bounds are applied yet: colder always ranks lower, even below freezing. These are relative comparisons, not a declaration that conditions are safe for your dog.</p>
-        <p>Days without AQI are labeled weather-only and excluded from the week’s best combined picks. Missing readings are never treated as zero.</p>
+        <p>Only starts within your walking hours are compared; the default is 8 AM through 9 PM, inclusive. Before sunset covers sunrise to sunset. After sunset covers sunset to local midnight. Times use the forecast location’s time zone. Temperature and AQI are at the suggested start; precipitation and average UV cover the following hour. Forecasts do not guarantee conditions throughout a walk.</p>
+        <p>Hours outside your cutoffs are excluded before ranking. Defaults are 32–80°F, precipitation chance at most 33%, US AQI at most 50, and UV at most 5. Blank cutoffs have no limit. Within those limits, colder still ranks lower. These comparisons do not declare conditions safe for every dog.</p>
+        <p>Days without AQI are labeled weather-only and excluded from the week’s best combined picks. Their air-quality cutoff cannot be checked. Missing readings are never treated as zero.</p>
       </details>
       <details>
         <summary>Data & location</summary>

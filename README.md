@@ -27,9 +27,11 @@ Assets, manifest, and service-worker scope use relative paths. The build fingerp
 
 Choose a city/ZIP, enter `latitude, longitude`, or use the device-location button. Day view shows two picks for the selected day; Week view compares the seven calendar days beginning today. Individual metric minima and the hourly table let you inspect the tradeoffs.
 
+Use **App options → Walk start times** to set the earliest and latest allowed start. The defaults are **8:00 AM–9:00 PM**, inclusive, in the forecast location's time zone. The cutoff defaults are **32–80°F**, **33% precipitation chance**, **US AQI 50**, and **UV 5**. Leave any cutoff blank for no limit. **Save preferences** applies the hours and cutoffs to recommendations, minima, and the hourly table. Preferences remain on this device across app updates. The latest time must be at or after the earliest on the same day; a bound between hourly points selects only points inside the range.
+
 In a supported desktop or Android browser, use **App options → Install app** or the browser's install control. On iPhone/iPad, open the HTTPS site in Safari and choose **Share → Add to Home Screen**.
 
-The app saves its last location and forecast on the device. It can reopen offline, showing when the forecast was saved; saved or stale information is not a fresh observation. New forecasts need an internet connection. App updates are offered for acceptance instead of forcing a reload. **App options → Check for updates** checks manually; [`update.html`](public/update.html) provides network-only update recovery without clearing the saved location or forecast.
+The app saves its last location and forecast on the device. It can reopen offline, showing when the forecast was saved; saved or stale information is not a fresh observation. New forecasts need an internet connection. Updates are checked automatically on startup, on returning to the app, on reconnecting, and once a minute while visible. A top-level **Update available** button offers a downloaded update without forcing a reload. [`update.html`](public/update.html) provides network-only update recovery without clearing saved preferences or the forecast.
 
 ## How picks work
 
@@ -38,7 +40,7 @@ The app saves its last location and forecast on the device. It can reopen offlin
 - Temperature and AQI describe the suggested start. Precipitation probability/amount and average UV describe the following hour. Open-Meteo reports these aggregates at the hour's end, so the app aligns them to the prior start using absolute timestamps. It requests one extra weather day to obtain the final boundary, while displaying only seven calendar days.
 - Lower temperature, UV, AQI, and precipitation each get equal weight. Each value is converted to its percentile rank among eligible forecast hours. Precipitation is the average of the ranks for probability and amount in millimeters. The four factor ranks are then averaged; ties go to the earliest hour. Different variables can have their minima at different times, so a combined pick is a compromise.
 - Complete-data hours share one comparison population for consistent day/week picks. Hours missing AQI cannot become the week's best combined pick. A period without complete data can show an explicitly labeled weather-only suggestion, using a separate three-factor comparison. Missing values are never zero.
-- There are **no temperature bounds yet**. Colder ranks better, including below freezing. These relative picks do not declare conditions safe for a dog, and an hourly forecast point does not guarantee conditions throughout a walk. Bounds such as 32–80°F and other thresholds remain future tuning work.
+- Hours outside the configured cutoffs are excluded before ranking; the app says when none qualify. Cutoffs are inclusive, and zero remains a real limit. Within the allowed temperature range, colder ranks better. Weather-only picks must satisfy known weather cutoffs but cannot be checked against the AQI cutoff. These relative picks do not declare conditions safe for a dog, and an hourly forecast point does not guarantee conditions throughout a walk.
 
 ## Data sources and limits
 
