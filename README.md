@@ -2,6 +2,8 @@
 
 A small, installable web app that compares upcoming dog-walking hours using precipitation, US AQI, UV index, and temperature. It runs entirely in the browser with free public APIs and no API key.
 
+By [Ryan L. Melvin](https://ryanlmelvin.com).
+
 ## Run locally
 
 Requires Node.js 22 or newer. There are no package dependencies to install.
@@ -17,7 +19,7 @@ Open [http://127.0.0.1:4319/walk-advisor/](http://127.0.0.1:4319/walk-advisor/).
 
 ## GitHub Pages
 
-The intended repository is `ryanlmelvin/walk-advisor`, with Pages at [https://ryanlmelvin.github.io/walk-advisor/](https://ryanlmelvin.github.io/walk-advisor/).
+The source is at [ryanlmelvin/walk-advisor](https://github.com/ryanlmelvin/walk-advisor), with Pages at [https://ryanlmelvin.github.io/walk-advisor/](https://ryanlmelvin.github.io/walk-advisor/).
 
 In repository **Settings → Pages**, select **GitHub Actions** as the build source. Pushing to `main`, or manually running **Deploy to GitHub Pages**, runs syntax checks, tests, and the build before publishing `dist/`. The workflow is [`.github/workflows/pages.yml`](.github/workflows/pages.yml). A successful workflow and a live-page check are required to confirm publication.
 
@@ -51,3 +53,9 @@ The app saves its last location and forecast on the device. It can reopen offlin
 [IQAir's free Community API](https://www.iqair.com/air-quality-monitors/api) provides current city-level AQI and weather. Individual station access requires a paid plan, and forecasts require Enterprise. It therefore cannot provide the requested free, hyperlocal hourly forecasts and is not used for ranking. A future current-observation integration should remain distinct from forecast data; a shared secret cannot be hidden in a static website.
 
 Open-Meteo's hosted free API is for [noncommercial use](https://open-meteo.com/en/terms), with limits of fewer than 10,000 calls/day, 5,000/hour, and 600/minute. Data attribution follows [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Requests send the selected coordinates directly to Open-Meteo. Commercial use, ads, or subscriptions require revisiting the provider's plan and terms.
+
+## License
+
+Copyright © 2026 [Ryan L. Melvin](https://ryanlmelvin.com). App code and original artwork are licensed under [GNU GPL version 3](LICENSE) (`GPL-3.0-only`). You may redistribute and modify them under that license. This software comes without any warranty; see the license for details.
+
+The app bundles no third-party libraries, fonts, or artwork. Weather and air-quality data are fetched at runtime and retain their separate data license and API terms above. The build includes the full GPLv3 text, linked from **App options → About**.

@@ -6,7 +6,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../dist');
 const prefix = '/walk-advisor/';
 const host = process.env.HOST || '127.0.0.1';
 const port = Number(process.env.PORT || 4319);
-const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png' };
+const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.txt': 'text/plain; charset=utf-8' };
 try { await stat(resolve(root, 'index.html')); } catch { console.error('Run npm run build before npm start.'); process.exit(1); }
 createServer(async (request, response) => {
   let pathname;

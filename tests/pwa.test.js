@@ -243,6 +243,7 @@ test('build hashes module references, includes complete shell, and changes with 
     await cp(new URL('../public/', import.meta.url), resolve(root, 'public'), { recursive: true });
     await cp(new URL('../scripts/build.mjs', import.meta.url), resolve(root, 'scripts/build.mjs'));
     await cp(new URL('../scripts/sw-template.js', import.meta.url), resolve(root, 'scripts/sw-template.js'));
+    await cp(new URL('../LICENSE', import.meta.url), resolve(root, 'LICENSE'));
     const fixture = {
       'index.html': '<link href="./styles.css"><script type="module" src="./app.js"></script>',
       'styles.css': 'body { color: green }',
@@ -264,6 +265,7 @@ test('build hashes module references, includes complete shell, and changes with 
     assert.ok(sw.includes(`app.${version}.js`));
     assert.ok(!sw.includes('"update.html"'));
     assert.ok((await readdir(resolve(root, 'dist/icons'))).includes('icon-512.png'));
+    assert.equal(await readFile(resolve(root, 'dist/LICENSE.txt'), 'utf8'), await readFile(resolve(root, 'LICENSE'), 'utf8'));
     build();
     assert.equal(JSON.parse(await readFile(resolve(root, 'dist/release.json'), 'utf8')).version, version);
     await writeFile(resolve(root, 'src/styles.css'), 'body { color: blue }');

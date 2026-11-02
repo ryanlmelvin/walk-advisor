@@ -2,6 +2,8 @@
   "name": "walk-advisor",
   "version": "0.1.0",
   "private": true,
+  "license": "GPL-3.0-only",
+  "author": { "name": "Ryan L. Melvin", "url": "https://ryanlmelvin.com" },
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",

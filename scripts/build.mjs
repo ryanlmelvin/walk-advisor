@@ -18,6 +18,7 @@ const sources = new Map();
 for (const directory of ['public', 'src']) {
   for (const path of await walk(resolve(root, directory))) sources.set(relative(resolve(root, directory), path), await readFile(path));
 }
+sources.set('LICENSE.txt', await readFile(resolve(root, 'LICENSE')));
 for (const required of ['index.html', 'app.js', 'styles.css', 'forecast.js', 'ranking.js', 'pwa.js']) {
   if (!sources.has(required)) throw new Error(`Missing required file: ${required}`);
 }
