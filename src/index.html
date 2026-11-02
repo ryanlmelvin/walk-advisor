@@ -74,20 +74,21 @@
       <p id="dialog-status" class="small" role="status" hidden></p>
       <details id="method-details">
         <summary>How times are picked</summary>
-        <p>Each upcoming hourly point gets equal weight for precipitation, US AQI, UV, and temperature. Lower is better. Precipitation combines chance and amount. We compare percentile ranks across the forecast; ties go to the earliest hour.</p>
-        <p>Only starts within your walking hours are compared; the default is 8 AM through 9 PM, inclusive. Before sunset covers sunrise to sunset. After sunset covers sunset to local midnight. Times use the forecast location’s time zone. Temperature and AQI are at the suggested start; precipitation and average UV cover the following hour. Forecasts do not guarantee conditions throughout a walk.</p>
-        <p>Hours outside your cutoffs are excluded before ranking. Defaults are 32–80°F, precipitation chance at most 33%, US AQI at most 50, and UV at most 5. Blank cutoffs have no limit. Within those limits, colder still ranks lower. These comparisons do not declare conditions safe for every dog.</p>
-        <p>Days without AQI are labeled weather-only and excluded from the week’s best combined picks. Their air-quality cutoff cannot be checked. Missing readings are never treated as zero.</p>
+        <p>We skip hours outside your times and limits. Rain or snow, AQI, UV, and temperature get equal weight. Lower is better. Ties go to the earlier hour.</p>
+        <p>Daylight picks fall between sunrise and sunset. Night picks run from sunset to midnight. All times are local to your chosen place.</p>
+        <p>Temperature and AQI are for the start. Rain, snow, and UV cover the next hour. A weather-only pick has no AQI, so we cannot check its air limit. It cannot be a week’s best pick.</p>
+        <p>These picks are a guide. They do not ensure a safe walk for every dog.</p>
       </details>
       <details>
         <summary>Data & location</summary>
-        <p>Weather comes from <a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Open-Meteo</a> using the best available models at your coordinates. AQI comes from <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">CAMS via Open-Meteo</a>: a regional model, about 11 km in Europe and 45 km globally, usually covering only 4–5 days.</p>
-        <p>Precise location improves the forecast lookup, but it does not turn modeled data into a backyard sensor. Location search uses a place’s center; coordinates or device location give a closer lookup.</p>
-        <p><a href="https://www.iqair.com/air-quality-monitors/api" target="_blank" rel="noreferrer">IQAir’s free API</a> offers current city AQI. Individual stations and forecasts require paid plans, so IQAir is not used for these recommendations.</p>
-        <p>Your last location and forecast are saved on this device. Coordinates are sent to Open-Meteo to retrieve data. Free API use is <a href="https://open-meteo.com/en/terms" target="_blank" rel="noreferrer">noncommercial</a>; data is under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.</p>
+        <p><a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Open-Meteo</a> gives us weather data. <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">CAMS</a> gives us air data. Both use models, not a sensor in your yard. Air forecasts last about 4–5 days.</p>
+        <p>GPS gives a closer lookup than a city name. Air data still covers a broad region.</p>
+        <p><a href="https://www.iqair.com/air-quality-monitors/api" target="_blank" rel="noreferrer">IQAir’s free plan</a> gives current city data. Local station data and forecasts need a paid plan.</p>
+        <p>We save your location, settings, and last forecast on this device. We send your chosen location to Open-Meteo for the forecast.</p>
+        <p><a href="https://open-meteo.com/en/terms" target="_blank" rel="noreferrer">Free API terms</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">Data license (CC BY 4.0)</a></p>
         <p id="location-detail" class="small muted"></p>
       </details>
-      <details id="install-help"><summary>Installation help</summary><p>On iPhone or iPad, open this page in Safari, choose Share, then Add to Home Screen. In Chrome or Edge, use Install app above or the browser’s install menu.</p><p>The app can reopen with its last saved forecast offline. Fresh forecasts need an internet connection.</p></details>
+      <details id="install-help"><summary>Install help</summary><p>iPhone or iPad: Open in Safari. Tap Share, then Add to Home Screen.</p><p>Android or desktop: Tap Install app above, or use your browser’s install menu.</p><p>Offline, you can view the last saved forecast. Go online for fresh data.</p></details>
       <p class="small muted version-line">Version <span id="version">__APP_VERSION__</span> · <a href="./update.html">Update recovery</a></p>
     </dialog>
     <script type="module" src="./app.js"></script>
