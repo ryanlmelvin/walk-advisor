@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#244d3e">
+  <title>Update Walk Advisor</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color:#203c30;background:#f5f6f2;color-scheme:light dark}
+    body{max-width:32rem;padding:1.5rem;margin:2rem auto;line-height:1.6}
+    h1{font-size:1.45rem}button{font:inherit;background:#244d3e;color:white;border:0;border-radius:.5rem;padding:.65rem 1rem;cursor:pointer}
+    button:disabled{opacity:.6;cursor:wait}a{color:inherit}#status{min-height:3rem}
+    @media(prefers-color-scheme:dark){:root{background:#17201c;color:#e4eee8}}
+  </style>
+</head>
+<body>
+  <h1>Update Walk Advisor</h1>
+  <p>Download the latest app without clearing your saved location or forecast.</p>
+  <button id="update" type="button">Check and update</button>
+  <p id="status" role="status" aria-live="polite"></p>
+  <a href="./">Return to Walk Advisor</a>
+  <script>
+    const button = document.querySelector('#update');
+    const status = document.querySelector('#status');
+    function during(promise, signal) {
+      if (signal.aborted) return Promise.reject(signal.reason);
+      return new Promise((resolve, reject) => {
+        const cancelled = () => reject(signal.reason);
+        signal.addEventListener('abort', cancelled, { once: true });
+        Promise.resolve(promise).then(
+          value => { signal.removeEventListener('abort', cancelled); resolve(value); },
+          error => { signal.removeEventListener('abort', cancelled); reject(error); }
+        );
+      });
+    }
+    function workerState(worker, states, signal, action) {
+      let changed;
+      const transition = new Promise((resolve, reject) => {
+        changed = () => {
+          if (states.includes(worker.state)) resolve();
+          if (worker.state === 'redundant') reject(new Error('The update could not finish. Please retry.'));
+        };
+        worker.addEventListener('statechange', changed);
+        try { if (action) action(); changed(); } catch (error) { reject(error); }
+      });
+      return during(transition, signal).finally(() => worker.removeEventListener('statechange', changed));
+    }
+    button.addEventListener('click', async () => {
+      if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+        status.textContent = 'Updates require HTTPS or localhost. Open the GitHub Pages version to update.';
+        return;
+      }
+      button.disabled = true;
+      status.textContent = 'Checking for the latest version…';
+      const attempt = new AbortController();
+      const timer = setTimeout(() => attempt.abort(new Error('The update timed out. Check your connection and try again.')), 25_000);
+      try {
+        let registration = await during(navigator.serviceWorker.getRegistration('./'), attempt.signal);
+        // An already downloaded release can be applied even if the network drops.
+        if (!registration?.waiting) {
+          registration = await during(navigator.serviceWorker.register('./sw.js', { scope: './', updateViaCache: 'none' }), attempt.signal);
+          await during(registration.update(), attempt.signal);
+        }
+        if (registration.installing) await workerState(registration.installing, ['installed', 'activated'], attempt.signal);
+        if (registration.waiting) {
+          status.textContent = 'Applying update…';
+          const worker = registration.waiting;
+          await workerState(worker, ['activated'], attempt.signal, () => worker.postMessage({ type: 'ACTIVATE_UPDATE' }));
+        } else {
+          const ready = await during(navigator.serviceWorker.ready, attempt.signal);
+          if (ready.active) await workerState(ready.active, ['activated'], attempt.signal);
+        }
+        status.textContent = 'The app is updated. Opening Walk Advisor…';
+        location.replace('./');
+      } catch (error) {
+        status.textContent = error.message || 'Could not update. Check your connection and try again.';
+      } finally {
+        clearTimeout(timer);
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
