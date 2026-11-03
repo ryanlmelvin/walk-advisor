@@ -44,15 +44,14 @@
         </div>
         <div id="day-picker" class="day-picker" role="group" aria-label="Choose forecast day"></div>
         <div class="forecast-heading"><h2 id="forecast-heading"></h2><span id="sunset-time" class="small muted"></span></div>
-        <p id="coverage-note" class="notice" hidden></p>
         <div id="recommendations" class="recommendations"></div>
         <div id="week-table" class="week-table" hidden></div>
-        <section id="minima-section" class="minima-section" aria-labelledby="minima-heading">
-          <h2 id="minima-heading">Lowest hours</h2>
+        <details id="minima-section" class="minima-section" open>
+          <summary>Lowest hours</summary>
           <div id="minima" class="minima"></div>
-        </section>
+        </details>
         <details id="hourly-details" class="hourly-details"><summary>Matching hours</summary><div id="hourly-table" class="table-scroll" tabindex="0" role="region" aria-label="Hourly forecast"></div></details>
-        <p class="source-line"><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noreferrer">CAMS</a><button id="method-button" class="text-button">How times are picked</button></p>
+        <p class="source-line"><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noreferrer">CAMS</a></p>
       </section>
     </main>
     <dialog id="app-dialog" aria-labelledby="dialog-heading">
@@ -75,9 +74,9 @@
       <p id="dialog-status" class="small" role="status" hidden></p>
       <details id="method-details">
         <summary>How times are picked</summary>
-        <p>We skip hours outside your times and limits. Rain or snow, AQI, UV, and temperature get equal weight. Lower is better. Ties go to the earlier hour.</p>
+        <p>We skip hours outside your times and limits. Precipitation chance, AQI, UV, and temperature get equal weight. Lower is better. Ties go to the earlier hour.</p>
         <p>Daylight picks fall between sunrise and sunset. Night picks run from sunset to midnight. All times are local to your chosen place.</p>
-        <p>Temperature and AQI are for the start. Rain, snow, and UV cover the next hour. A weather-only pick has no AQI, so we cannot check its air limit. It cannot be a week’s best pick.</p>
+        <p>Temperature and AQI are for the start. Precipitation and UV cover the next hour. We only show dates with all four readings.</p>
         <p>These picks are a guide. They do not ensure a safe walk for every dog.</p>
       </details>
       <details>

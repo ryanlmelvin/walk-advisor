@@ -1,5 +1,6 @@
-const WEATHER_METRICS = ['temperature', 'uv', 'precipitationProbability', 'precipitation'];
+const WEATHER_METRICS = ['temperature', 'uv', 'precipitationProbability'];
 const ALL_METRICS = [...WEATHER_METRICS, 'aqi'];
+const MINIMA_METRICS = [...ALL_METRICS, 'precipitation'];
 const isNumber = (value) => typeof value === 'number' && Number.isFinite(value);
 const hasMetrics = (hour, metrics) => metrics.every((metric) => isNumber(hour[metric]));
 const DEFAULT_WALKING_HOURS = Object.freeze({ earliest: '08:00', latest: '21:00' });
@@ -7,6 +8,7 @@ const DEFAULT_CUTOFFS = Object.freeze({
   minTemperature: 32, maxTemperature: 80, maxPrecipitationProbability: 33, maxAqi: 50, maxUv: 5,
 });
 const clockFormatters = new Map();
+const dateFormatters = new Map();
 
 function normalizeCutoffs(cutoffs) {
   const result = Object.fromEntries(Object.entries(DEFAULT_CUTOFFS).map(([key, defaultValue]) => {
@@ -79,6 +81,55 @@ function validSunTimes(day) {
   return isNumber(day.sunrise) && isNumber(day.sunset) && day.sunset > day.sunrise;
 }
 
+/**
+ * Keep the contiguous upcoming range whose requested walk-start hours have
+ * all four readings. Availability is checked before cutoffs. A partial final
+ * day is not offered; past hours and hours outside the walking window do not
+ * shorten the range. Missing whole hourly rows count as unavailable too.
+ */
+export function completeForecastRange(forecast, now = Date.now(), walkingHours = DEFAULT_WALKING_HOURS) {
+  const timezone = forecast?.location?.timezone || 'UTC';
+  let formatter = dateFormatters.get(timezone);
+  if (!formatter) {
+    try {
+      formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+      dateFormatters.set(timezone, formatter);
+    } catch {
+      return { ...forecast, days: [], hours: [] };
+    }
+  }
+  const localDate = (time) => {
+    const parts = Object.fromEntries(formatter.formatToParts(time).map(({ type, value }) => [type, value]));
+    return `${parts.year}-${parts.month}-${parts.day}`;
+  };
+  const today = localDate(now);
+  const hours = (forecast?.hours ?? []).filter((hour) => isNumber(hour.time));
+  const byTime = new Map(hours.map((hour) => [hour.time, hour]));
+  // Forecast grids may start at a fractional UTC hour (for example India).
+  const gridOffset = hours.length ? ((hours[0].time % 3600000) + 3600000) % 3600000 : 0;
+  const days = [];
+  for (const day of [...(forecast?.days ?? [])].sort((a, b) => a.date.localeCompare(b.date))) {
+    if (day.date < today) continue;
+    if (!validSunTimes(day)) break;
+    const midnightUtc = Date.parse(`${day.date}T00:00:00Z`);
+    if (!isNumber(midnightUtc)) break;
+    const expected = [];
+    // This UTC span contains the full local day in every IANA zone, including
+    // 23/25-hour DST days. Match dates instead of assuming a fixed offset.
+    for (let time = midnightUtc - 86400000 + gridOffset; time < midnightUtc + 172800000; time += 3600000) {
+      if (time >= now && time >= day.sunrise && localDate(time) === day.date
+        && isWithinWalkingHours({ time }, timezone, walkingHours)) expected.push(time);
+    }
+    if (!expected.length) continue;
+    if (!expected.every((time) => byTime.get(time)?.date === day.date && hasMetrics(byTime.get(time), ALL_METRICS))) break;
+    days.push(day);
+  }
+  const dates = new Set(days.map((day) => day.date));
+  return { ...forecast, days, hours: hours.filter((hour) => dates.has(hour.date)) };
+}
+
 function percentileMap(hours, metric) {
   const values = hours.map((hour) => hour[metric]).sort((left, right) => left - right);
   const ranks = new Map();
@@ -97,8 +148,7 @@ function scoreHours(hours, includeAir) {
   const metrics = includeAir ? ALL_METRICS : WEATHER_METRICS;
   const ranks = Object.fromEntries(metrics.map((metric) => [metric, percentileMap(hours, metric)]));
   return new Map(hours.map((hour) => {
-    const precipitation = (ranks.precipitationProbability.get(hour.precipitationProbability)
-      + ranks.precipitation.get(hour.precipitation)) / 2;
+    const precipitation = ranks.precipitationProbability.get(hour.precipitationProbability);
     const total = ranks.temperature.get(hour.temperature) + ranks.uv.get(hour.uv) + precipitation
       + (includeAir ? ranks.aqi.get(hour.aqi) : 0);
     return [hour.time, { ...hour, rank: total / (includeAir ? 4 : 3) }];
@@ -127,7 +177,7 @@ function pickPeriod(hours, completeScores, weatherScores, missingReason, hasAqiC
 /**
  * Compare upcoming hourly points during daylight and from sunset to midnight.
  * Four factors have equal weight: temperature, UV, AQI, and precipitation
- * (the average of probability and amount). Lower percentile is better; ties
+ * probability. Lower percentile is better; ties
  * choose the earliest hour. Hard cutoffs remove nonqualifying hours first.
  * All complete hours share one reference population, so daily and weekly picks
  * agree. Weather-only picks share a separate population and are never promoted
@@ -168,7 +218,9 @@ export function analyzeForecast(forecast, now = Date.now(), walkingHours = DEFAU
         bounds.maxAqi !== null),
     };
   });
-  const minima = Object.fromEntries(ALL_METRICS.map((metric) => {
+  // Amount remains an optional informational minimum; it never affects
+  // coverage, cutoffs, or the four-factor score.
+  const minima = Object.fromEntries(MINIMA_METRICS.map((metric) => {
     const available = eligible.filter((hour) => isNumber(hour[metric]));
     if (!available.length) return [metric, null];
     const value = Math.min(...available.map((hour) => hour[metric]));

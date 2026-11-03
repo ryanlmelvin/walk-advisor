@@ -68,7 +68,7 @@ test('unknown UV and temperature are not zero; all-null AQI minima is null', () 
   assert.equal(result.bestDaylight, null);
 });
 
-test('precipitation chance and amount together have the same weight as each other factor', () => {
+test('precipitation probability has the same weight as each other factor', () => {
   const hours = [hour('2026-11-02', '10:00', {
     temperature: 70, aqi: 20, uv: 0, precipitation: 0, precipitationProbability: 0,
   }), hour('2026-11-02', '11:00', {
@@ -77,6 +77,20 @@ test('precipitation chance and amount together have the same weight as each othe
   const result = analyzeForecast({ days: [day()], hours }, now, undefined, unlimited);
   // The later hour wins temperature + AQI; precipitation counts only once.
   assert.equal(result.bestDaylight.time, hours[1].time);
+});
+
+test('precipitation amount is neither required nor used to rank hours', () => {
+  const first = hour('2026-11-02', '10:00', { precipitation: 100 });
+  const second = hour('2026-11-02', '11:00', { precipitation: 0 });
+  const third = hour('2026-11-02', '12:00');
+  delete third.precipitation;
+  const result = analyzeForecast({ days: [day()], hours: [first, second, third] }, now);
+  assert.equal(result.bestDaylight.time, first.time);
+  assert.equal(result.bestDaylight.rank, 0);
+  assert.equal(result.minima.precipitation.value, 0);
+  assert.deepEqual(result.minima.precipitation.times.map((point) => point.time), [second.time]);
+  const withoutAmount = analyzeForecast({ days: [day()], hours: [third] }, now);
+  assert.equal(withoutAmount.bestDaylight.time, third.time);
 });
 
 test('daily scores share a reference population with weekly picks', () => {

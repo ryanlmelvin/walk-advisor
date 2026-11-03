@@ -1,5 +1,5 @@
 import { fetchForecast, searchLocations } from './forecast.js';
-import { analyzeForecast, isWithinWalkingHours, isWithinCutoffs } from './ranking.js';
+import { analyzeForecast, completeForecastRange, isWithinWalkingHours, isWithinCutoffs } from './ranking.js';
 import { initPwa } from './pwa.js';
 import { icons } from './weather-icons.js';
 
@@ -27,6 +27,7 @@ try {
 for (const [key, id] of Object.entries(cutoffFields)) $(id).value = cutoffs[key] ?? '';
 let forecast = null;
 let view = 'day';
+let minimaView = null;
 let selectedDate = null;
 let request = null;
 let searchRequest = null;
@@ -67,14 +68,14 @@ function dayTime(day) {
 }
 
 function metrics(hour) {
-  return `<dl class="metrics"><div><dt>Precipitation</dt><dd>${valueLabel(hour.precipitationProbability, '%')}<small>${valueLabel(hour.precipitation, ' mm', 2)}</small></dd></div><div><dt>US AQI</dt><dd>${valueLabel(hour.aqi)}${hour.aqi === null ? '<small>Unavailable</small>' : ''}</dd></div><div><dt>UV index</dt><dd>${valueLabel(hour.uv, '', 1)}</dd></div><div><dt>Temperature</dt><dd>${valueLabel(hour.temperature, '°F', 1)}</dd></div></dl>`;
+  return `<dl class="metrics"><div><dt>Precipitation</dt><dd>${valueLabel(hour.precipitationProbability, '%')}</dd></div><div><dt>US AQI</dt><dd>${valueLabel(hour.aqi)}</dd></div><div><dt>UV index</dt><dd>${valueLabel(hour.uv, '', 1)}</dd></div><div><dt>Temp</dt><dd>${valueLabel(hour.temperature, '°F', 1)}</dd></div></dl>`;
 }
 
 function recommendation(period, key, showDate) {
   const name = key === 'daylight' ? 'Before sunset' : 'After sunset';
   const hour = period.best;
   return `<article class="recommendation" data-period="${key}" aria-label="${name}"><h3 class="card-heading">${icons[key]}${name}</h3>${hour
-    ? `<p class="walk-time">${timeLabel(hour.time)}</p>${showDate ? `<p class="walk-date">${dateLabel(hour.time)}</p>` : ''}${metrics(hour)}${period.complete ? '' : '<p class="card-note">Weather-only · AQI unavailable</p>'}`
+    ? `<p class="walk-time">${timeLabel(hour.time)}</p>${showDate ? `<p class="walk-date">${dateLabel(hour.time)}</p>` : ''}${metrics(hour)}`
     : `<p class="no-pick">${escape(period.reason || 'No matching hours.')}</p>`}</article>`;
 }
 
@@ -96,68 +97,73 @@ function minimumBlock(title, minimum, suffix, digits = 0, secondary = '', icon =
 function renderMinima(minima) {
   const amount = minima.precipitation;
   const amountDetail = amount ? `<details><summary>Lowest amount: ${valueLabel(amount.value, ' mm', 2)}</summary>${timeRanges(amount.times, view === 'week').map((label) => `<p>${label}</p>`).join('')}</details>` : '';
-  $('minima').innerHTML = minimumBlock('Rain / snow', minima.precipitationProbability, '%', 0, amountDetail, icons.precipitation)
+  $('minima').innerHTML = minimumBlock('Precipitation', minima.precipitationProbability, '%', 0, amountDetail, icons.precipitation)
     + minimumBlock('US AQI', minima.aqi, '') + minimumBlock('UV index', minima.uv, '', 1)
     + minimumBlock('Temperature', minima.temperature, '°F', 1);
 }
 
-function eligibleHours(now, date = null) {
-  const days = new Map(forecast.days.map((day) => [day.date, day]));
-  return forecast.hours.filter((hour) => {
+function eligibleHours(source, now, date = null) {
+  const days = new Map(source.days.map((day) => [day.date, day]));
+  return source.hours.filter((hour) => {
     const day = days.get(hour.date);
     return hour.time >= now && (!date || hour.date === date) && numeric(day?.sunrise)
       && numeric(day?.sunset) && day.sunset > day.sunrise && hour.time >= day.sunrise
-      && isWithinWalkingHours(hour, forecast.location.timezone, walkingHours)
-      && isWithinCutoffs(hour, cutoffs, { allowMissingAqi: true });
+      && isWithinWalkingHours(hour, source.location.timezone, walkingHours)
+      && isWithinCutoffs(hour, cutoffs);
   });
 }
 
 function renderHourly(hours, minima) {
   const metricCell = (hour, metric, suffix = '', digits = 0) => `<td${numeric(hour[metric]) && hour[metric] === minima[metric]?.value ? ' class="lowest" title="Lowest value in this range"' : ''}>${valueLabel(hour[metric], suffix, digits)}</td>`;
-  $('hourly-table').innerHTML = hours.length ? `<table><thead><tr><th scope="col">Hour</th><th scope="col">Rain / snow</th><th scope="col">Amount</th><th scope="col">US AQI</th><th scope="col">UV</th><th scope="col">Temp</th></tr></thead><tbody>${hours.map((hour) => `<tr><th scope="row">${view === 'week' ? format(hour.time, { weekday: 'short' }) + ' ' : ''}${timeLabel(hour.time)}</th>${metricCell(hour, 'precipitationProbability', '%')}${metricCell(hour, 'precipitation', ' mm', 2)}${metricCell(hour, 'aqi')}${metricCell(hour, 'uv', '', 1)}${metricCell(hour, 'temperature', '°F', 1)}</tr>`).join('')}</tbody></table>` : '<p class="small muted" style="padding:14px">No matching hours.</p>';
+  $('hourly-table').innerHTML = hours.length ? `<table><thead><tr><th scope="col">Hour</th><th scope="col">Precipitation</th><th scope="col">US AQI</th><th scope="col">UV</th><th scope="col">Temp</th></tr></thead><tbody>${hours.map((hour) => `<tr><th scope="row">${view === 'week' ? format(hour.time, { weekday: 'short' }) + ' ' : ''}${timeLabel(hour.time)}</th>${metricCell(hour, 'precipitationProbability', '%')}${metricCell(hour, 'aqi')}${metricCell(hour, 'uv', '', 1)}${metricCell(hour, 'temperature', '°F', 1)}</tr>`).join('')}</tbody></table>` : '<p class="small muted" style="padding:14px">No matching hours.</p>';
 }
 
 function renderWeek(analysis) {
+  if (!analysis.days.length) { $('week-table').replaceChildren(); return; }
   const cell = (day, key, weekBest) => {
     const period = day[key];
-    return `<td>${period.best ? `<button data-date="${day.date}" aria-label="View ${escape(dateLabel(dayTime(day)))} ${key === 'daylight' ? 'daylight' : 'evening'} forecast"${period.best.time === weekBest?.time ? ' class="week-best" title="Best combined choice this week"' : ''}>${timeLabel(period.best.time)}</button>${!period.complete ? '<span class="weather-only">Weather-only</span>' : ''}` : '<span class="empty-period">—</span>'}</td>`;
+    return `<td>${period.best ? `<button data-date="${day.date}" aria-label="View ${escape(dateLabel(dayTime(day)))} ${key === 'daylight' ? 'daylight' : 'evening'} forecast"${period.best.time === weekBest?.time ? ' class="week-best" title="Best combined choice this week"' : ''}>${timeLabel(period.best.time)}</button>` : '<span class="empty-period">—</span>'}</td>`;
   };
-  $('week-table').innerHTML = `<table><thead><tr><th scope="col">Day</th><th scope="col">Before sunset</th><th scope="col">After sunset</th></tr></thead><tbody>${analysis.days.map((day) => `<tr><th scope="row"><button data-date="${day.date}">${dateLabel(dayTime(day))}</button></th>${cell(day, 'daylight', analysis.bestDaylight)}${cell(day, 'afterDark', analysis.bestAfterDark)}</tr>`).join('')}</tbody></table>`;
+  $('week-table').innerHTML = `<table><thead><tr><th scope="col">Day</th><th scope="col">Before sunset</th><th scope="col">After sunset</th></tr></thead><tbody>${analysis.days.map((day) => `<tr><th scope="row"><button data-date="${day.date}">${dateLabel(dayTime(day))}</button></th>${cell(day, 'daylight', analysis.bestDaylight)}${cell(day, 'afterDark', analysis.bestAfterDark)}</tr>`).join('')}</tbody></table><p class="small muted range-note">Data for later dates not available yet.</p>`;
 }
 
 function render() {
   if (!forecast) return;
   const now = Date.now();
-  const analysis = analyzeForecast(forecast, now, walkingHours, cutoffs);
+  const available = completeForecastRange(forecast, now, walkingHours);
+  const analysis = analyzeForecast(available, now, walkingHours, cutoffs);
   if (!analysis.days.some((day) => day.date === selectedDate)) selectedDate = analysis.days[0]?.date;
   const day = analysis.days.find((item) => item.date === selectedDate);
-  if (!day) return;
   $('forecast').hidden = false;
   $('location-name').textContent = forecast.location.name || forecast.location.label || 'Selected location';
   $('location-name').parentElement.title = `Change location: ${forecast.location.label || ''}`;
   $('day-view').setAttribute('aria-pressed', String(view === 'day'));
   $('week-view').setAttribute('aria-pressed', String(view === 'week'));
-  $('day-picker').hidden = view !== 'day';
+  $('day-picker').hidden = view !== 'day' || !day;
   $('week-table').hidden = view !== 'week';
   $('day-picker').innerHTML = analysis.days.map((item) => `<button data-date="${item.date}" aria-pressed="${item.date === selectedDate}" aria-label="${fullDate(dayTime(item))}"><span>${format(dayTime(item), { weekday: 'short' })}</span><span>${format(dayTime(item), { day: 'numeric' })}</span></button>`).join('');
-  $('forecast-heading').textContent = view === 'day' ? fullDate(dayTime(day)) : 'Best this week';
-  $('sunset-time').textContent = view === 'day' && day.sunset ? `Sunset ${timeLabel(day.sunset)}` : '';
-  if (view === 'day') {
+  $('forecast-heading').textContent = day ? (view === 'day' ? fullDate(dayTime(day)) : 'Best this week') : '';
+  $('sunset-time').textContent = view === 'day' && day?.sunset ? `Sunset ${timeLabel(day.sunset)}` : '';
+  if (!day) {
+    $('recommendations').innerHTML = '<p class="no-pick">Complete forecast unavailable.</p>';
+    $('week-table').replaceChildren();
+  } else if (view === 'day') {
     $('recommendations').innerHTML = recommendation(day.daylight, 'daylight', false) + recommendation(day.afterDark, 'afterDark', false);
   } else {
     $('recommendations').innerHTML = recommendation({ best: analysis.bestDaylight, complete: true }, 'daylight', true)
       + recommendation({ best: analysis.bestAfterDark, complete: true }, 'afterDark', true);
     renderWeek(analysis);
   }
-  const shownHours = eligibleHours(now, view === 'day' ? selectedDate : null);
+  const shownHours = eligibleHours(available, now, view === 'day' ? selectedDate : null);
   $('minima-section').hidden = shownHours.length === 0;
+  if (minimaView !== view) {
+    $('minima-section').open = view === 'day' || !window.matchMedia('(max-width: 600px)').matches;
+    minimaView = view;
+  }
   $('hourly-details').hidden = shownHours.length === 0;
-  const minima = view === 'week' ? analysis.minima : analyzeForecast({ ...forecast, hours: forecast.hours.filter((hour) => hour.date === selectedDate) }, now, walkingHours, cutoffs).minima;
+  const minima = view === 'week' ? analysis.minima : analyzeForecast({ ...available, hours: available.hours.filter((hour) => hour.date === selectedDate) }, now, walkingHours, cutoffs).minima;
   renderMinima(minima);
   renderHourly(shownHours, minima);
-  const unavailable = shownHours.some((hour) => !numeric(hour.aqi));
-  $('coverage-note').textContent = unavailable ? 'Weather-only picks lack AQI.' : '';
-  $('coverage-note').hidden = !unavailable;
   const ageHours = (now - forecast.fetchedAt) / 3600000;
   const saved = refreshFailed || !navigator.onLine || ageHours >= 1;
   $('updated-at').textContent = `${saved ? 'Saved' : 'Updated'} ${ageHours > 20 ? dateLabel(forecast.fetchedAt) + ', ' : ''}${timeLabel(forecast.fetchedAt)} · ${format(now, { timeZoneName: 'short' }).split(' ').at(-1)}`;
@@ -323,7 +329,6 @@ $('walking-hours-form').addEventListener('submit', (event) => {
   render();
 });
 $('close-dialog').addEventListener('click', () => $('app-dialog').close());
-$('method-button').addEventListener('click', () => { $('method-details').open = true; $('app-dialog').showModal(); });
 $('app-dialog').addEventListener('click', (event) => { if (event.target === $('app-dialog') && (event.clientX < $('app-dialog').getBoundingClientRect().left || event.clientX > $('app-dialog').getBoundingClientRect().right || event.clientY < $('app-dialog').getBoundingClientRect().top || event.clientY > $('app-dialog').getBoundingClientRect().bottom)) $('app-dialog').close(); });
 
 const pwa = initPwa({
