@@ -27,7 +27,7 @@ try {
 for (const [key, id] of Object.entries(cutoffFields)) $(id).value = cutoffs[key] ?? '';
 let forecast = null;
 let view = 'day';
-let minimaView = null;
+let hourlyRange = null;
 let selectedDate = null;
 let request = null;
 let searchRequest = null;
@@ -79,43 +79,32 @@ function recommendation(period, key, showDate) {
     : `<p class="no-pick">${escape(period.reason || 'No matching hours.')}</p>`}</article>`;
 }
 
-function timeRanges(hours, includeDate) {
-  const groups = [];
-  for (const hour of hours) {
-    const last = groups.at(-1);
-    if (last && last.end.date === hour.date && hour.time - last.end.time === 3600000) last.end = hour;
-    else groups.push({ start: hour, end: hour });
-  }
-  return groups.map(({ start, end }) => `${includeDate ? format(start.time, { weekday: 'short' }) + ' · ' : ''}${timeLabel(start.time)}${end.time !== start.time ? '–' + timeLabel(end.time) : ''}`);
-}
-
-function minimumBlock(title, minimum, suffix, digits = 0, secondary = '', icon = '') {
-  const labels = minimum ? timeRanges(minimum.times, view === 'week') : [];
-  return `<div class="minimum"><h3>${icon}${title}</h3><p class="minimum-value">${minimum ? valueLabel(minimum.value, suffix, digits) : '—'}</p><div class="minimum-times">${labels.length ? labels.slice(0, 2).map((label) => `<p>${label}</p>`).join('') : 'Unavailable'}${labels.length > 2 ? `<details><summary>All tied hours</summary>${labels.slice(2).map((label) => `<p>${label}</p>`).join('')}</details>` : ''}${secondary}</div></div>`;
-}
-
-function renderMinima(minima) {
-  const amount = minima.precipitation;
-  const amountDetail = amount ? `<details><summary>Lowest amount: ${valueLabel(amount.value, ' mm', 2)}</summary>${timeRanges(amount.times, view === 'week').map((label) => `<p>${label}</p>`).join('')}</details>` : '';
-  $('minima').innerHTML = minimumBlock('Precipitation', minima.precipitationProbability, '%', 0, amountDetail, icons.precipitation)
-    + minimumBlock('US AQI', minima.aqi, '') + minimumBlock('UV index', minima.uv, '', 1)
-    + minimumBlock('Temperature', minima.temperature, '°F', 1);
-}
-
-function eligibleHours(source, now, date = null) {
+function upcomingHours(source, now, date = null) {
   const days = new Map(source.days.map((day) => [day.date, day]));
   return source.hours.filter((hour) => {
     const day = days.get(hour.date);
     return hour.time >= now && (!date || hour.date === date) && numeric(day?.sunrise)
       && numeric(day?.sunset) && day.sunset > day.sunrise && hour.time >= day.sunrise
-      && isWithinWalkingHours(hour, source.location.timezone, walkingHours)
-      && isWithinCutoffs(hour, cutoffs);
-  });
+      && isWithinWalkingHours(hour, source.location.timezone, walkingHours);
+  }).sort((left, right) => left.time - right.time);
 }
 
-function renderHourly(hours, minima) {
-  const metricCell = (hour, metric, suffix = '', digits = 0) => `<td${numeric(hour[metric]) && hour[metric] === minima[metric]?.value ? ' class="lowest" title="Lowest value in this range"' : ''}>${valueLabel(hour[metric], suffix, digits)}</td>`;
-  $('hourly-table').innerHTML = hours.length ? `<table><thead><tr><th scope="col">Hour</th><th scope="col">Precipitation</th><th scope="col">US AQI</th><th scope="col">UV</th><th scope="col">Temp</th></tr></thead><tbody>${hours.map((hour) => `<tr><th scope="row">${view === 'week' ? format(hour.time, { weekday: 'short' }) + ' ' : ''}${timeLabel(hour.time)}</th>${metricCell(hour, 'precipitationProbability', '%')}${metricCell(hour, 'aqi')}${metricCell(hour, 'uv', '', 1)}${metricCell(hour, 'temperature', '°F', 1)}</tr>`).join('')}</tbody></table>` : '<p class="small muted" style="padding:14px">No matching hours.</p>';
+function renderHourly(hours) {
+  const container = $('hourly-table');
+  const range = `${forecast.location.latitude},${forecast.location.longitude}:${forecast.location.timezone}:${view}:${view === 'day' ? selectedDate : ''}`;
+  const scrollLeft = range === hourlyRange ? container.scrollLeft : 0;
+  hourlyRange = range;
+  $('hourly-section').hidden = hours.length === 0;
+  if (!hours.length) { container.replaceChildren(); return; }
+  const columns = hours.map((hour) => ({ hour, matching: isWithinCutoffs(hour, cutoffs) }));
+  const criteria = [
+    ['precipitationProbability', 'Precipitation', '%', 0],
+    ['aqi', 'US AQI', '', 0],
+    ['uv', 'UV index', '', 1],
+    ['temperature', 'Temperature', '°F', 1],
+  ];
+  container.innerHTML = `<table class="hourly-grid"><thead><tr><td class="hourly-corner"></td>${columns.map(({ hour, matching }) => `<th scope="col"${matching ? ' class="matching-hour"' : ''}>${view === 'week' ? `<span class="hour-date">${dateLabel(hour.time)}</span>` : ''}${timeLabel(hour.time)}${matching ? ' <span aria-hidden="true">✓</span><span class="sr-only"> · Matches cutoffs</span>' : '<span class="sr-only"> · Outside cutoffs</span>'}</th>`).join('')}</tr></thead><tbody>${criteria.map(([metric, label, suffix, digits]) => `<tr><th scope="row">${label}</th>${columns.map(({ hour, matching }) => `<td${matching ? ' class="matching-hour"' : ''}>${valueLabel(hour[metric], suffix, digits)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  container.scrollLeft = scrollLeft;
 }
 
 function renderWeek(analysis) {
@@ -154,16 +143,7 @@ function render() {
       + recommendation({ best: analysis.bestAfterDark, complete: true }, 'afterDark', true);
     renderWeek(analysis);
   }
-  const shownHours = eligibleHours(available, now, view === 'day' ? selectedDate : null);
-  $('minima-section').hidden = shownHours.length === 0;
-  if (minimaView !== view) {
-    $('minima-section').open = view === 'day' || !window.matchMedia('(max-width: 600px)').matches;
-    minimaView = view;
-  }
-  $('hourly-details').hidden = shownHours.length === 0;
-  const minima = view === 'week' ? analysis.minima : analyzeForecast({ ...available, hours: available.hours.filter((hour) => hour.date === selectedDate) }, now, walkingHours, cutoffs).minima;
-  renderMinima(minima);
-  renderHourly(shownHours, minima);
+  renderHourly(upcomingHours(available, now, view === 'day' ? selectedDate : null));
   const ageHours = (now - forecast.fetchedAt) / 3600000;
   const saved = refreshFailed || !navigator.onLine || ageHours >= 1;
   $('updated-at').textContent = `${saved ? 'Saved' : 'Updated'} ${ageHours > 20 ? dateLabel(forecast.fetchedAt) + ', ' : ''}${timeLabel(forecast.fetchedAt)} · ${format(now, { timeZoneName: 'short' }).split(' ').at(-1)}`;

@@ -47,11 +47,10 @@
         <div class="forecast-heading"><h2 id="forecast-heading"></h2><span id="sunset-time" class="small muted"></span></div>
         <div id="recommendations" class="recommendations"></div>
         <div id="week-table" class="week-table" hidden></div>
-        <details id="minima-section" class="minima-section" open>
-          <summary>Lowest hours</summary>
-          <div id="minima" class="minima"></div>
-        </details>
-        <details id="hourly-details" class="hourly-details"><summary>Matching hours</summary><div id="hourly-table" class="table-scroll" tabindex="0" role="region" aria-label="Hourly forecast"></div></details>
+        <section id="hourly-section" class="hourly-section" aria-labelledby="hourly-heading">
+          <div class="hourly-heading"><h3 id="hourly-heading">Hourly forecast</h3><p id="hourly-key" class="hourly-key"><span aria-hidden="true">✓</span> Matches cutoffs</p></div>
+          <div id="hourly-table" class="table-scroll" tabindex="0" role="region" aria-labelledby="hourly-heading" aria-describedby="hourly-key"></div>
+        </section>
         <p class="source-line"><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noreferrer">CAMS</a></p>
       </section>
     </main>
