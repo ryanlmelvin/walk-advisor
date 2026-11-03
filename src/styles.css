@@ -28,5 +28,10 @@
    Home Screen status-bar blur. Body owns the safe-area insets exactly once. */
 @media(max-width:600px) and (display-mode:standalone) and (orientation:portrait){body{padding-top:calc(env(safe-area-inset-top,0px) + 24px)}}
 
+/* iOS's native time-field theme forces percentage widths to content-box,
+   adding padding outside the grid column (WebKit bug 301648). Opt out of
+   that sizing while retaining type=time and its native picker. */
+.time-inputs input[type="time"]{-webkit-appearance:none;appearance:none;box-sizing:border-box;width:100%;min-width:0;max-width:100%}
+.time-inputs input[type="time"]::-webkit-date-and-time-value{min-width:0;min-height:1.2em}
 /* Native time controls need more room than two narrow dialog columns. */
 @media(max-width:380px){.time-inputs{grid-template-columns:1fr}}
