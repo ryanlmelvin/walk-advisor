@@ -2,13 +2,20 @@ import { fetchForecast, searchLocations } from './forecast.js';
 import { analyzeForecast, completeForecastRange, isWithinWalkingHours, isWithinCutoffs } from './ranking.js';
 import { initPwa } from './pwa.js';
 import { icons } from './weather-icons.js';
+import { toDisplayTemperature, toFahrenheit, temperatureInputValue } from './temperature.js';
 
 const $ = (id) => document.getElementById(id);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 const storageKey = `walk-advisor:${new URL('.', location.href).pathname}:forecast-v1`;
 const hoursStorageKey = `walk-advisor:${new URL('.', location.href).pathname}:walking-hours-v1`;
 const cutoffsStorageKey = `walk-advisor:${new URL('.', location.href).pathname}:cutoffs-v1`;
+const temperatureUnitStorageKey = `walk-advisor:${new URL('.', location.href).pathname}:temperature-unit-v1`;
 const cutoffFields = { minTemperature: 'minimum-temperature', maxTemperature: 'maximum-temperature', maxPrecipitationProbability: 'maximum-precipitation', maxAqi: 'maximum-aqi', maxUv: 'maximum-uv' };
+const temperatureFields = ['minTemperature', 'maxTemperature'];
+let temperatureUnit = 'F';
+try { if (localStorage.getItem(temperatureUnitStorageKey) === 'C') temperatureUnit = 'C'; }
+catch { /* Fahrenheit remains available without storage. */ }
+let formTemperatureUnit = temperatureUnit;
 let cutoffs = { minTemperature: 32, maxTemperature: 80, maxPrecipitationProbability: 33, maxAqi: 50, maxUv: 5 };
 let walkingHours = { earliest: '08:00', latest: '21:00' };
 try {
@@ -25,6 +32,9 @@ try {
     && (saved.maxAqi === null || saved.maxAqi >= 0) && (saved.maxUv === null || saved.maxUv >= 0)) cutoffs = saved;
 } catch { /* Defaults remain available without storage. */ }
 for (const [key, id] of Object.entries(cutoffFields)) $(id).value = cutoffs[key] ?? '';
+let draftTemperatures = Object.fromEntries(temperatureFields.map((key) => [key, cutoffs[key]]));
+$('temperature-unit').value = temperatureUnit;
+renderTemperatureInputs();
 let forecast = null;
 let view = 'day';
 let hourlyRange = null;
@@ -53,6 +63,19 @@ function dialogStatus(message) {
   $('dialog-status').hidden = !message;
 }
 
+function readTemperatureInput(key) {
+  const value = $(cutoffFields[key]).value;
+  // A rounded display value must not change an untouched cutoff on save or toggle.
+  if (value === temperatureInputValue(draftTemperatures[key], formTemperatureUnit)) return draftTemperatures[key];
+  return value.trim() === '' ? null : toFahrenheit(Number(value), formTemperatureUnit);
+}
+
+function renderTemperatureInputs() {
+  for (const key of temperatureFields) $(cutoffFields[key]).value = temperatureInputValue(draftTemperatures[key], formTemperatureUnit);
+  $('minimum-temperature-label').textContent = `Min temperature (°${formTemperatureUnit})`;
+  $('maximum-temperature-label').textContent = `Max temperature (°${formTemperatureUnit})`;
+}
+
 function format(time, options) {
   return new Intl.DateTimeFormat('en-US', { timeZone: forecast?.location.timezone || 'UTC', ...options }).format(time);
 }
@@ -60,6 +83,7 @@ function format(time, options) {
 const timeLabel = (time) => format(time, { hour: 'numeric', minute: '2-digit' }).replace(':00', '');
 const dateLabel = (time) => format(time, { weekday: 'short', month: 'short', day: 'numeric' });
 const fullDate = (time) => format(time, { weekday: 'long', month: 'long', day: 'numeric' });
+const headingDate = (time) => `${format(time, { weekday: 'short' })}., ${format(time, { month: 'long', day: 'numeric' })}`;
 const numeric = (value) => typeof value === 'number' && Number.isFinite(value);
 const valueLabel = (value, suffix = '', digits = 0) => numeric(value) ? `${Number(value.toFixed(digits))}${suffix}` : '—';
 
@@ -68,7 +92,7 @@ function dayTime(day) {
 }
 
 function metrics(hour) {
-  return `<dl class="metrics"><div><dt>Precipitation</dt><dd>${valueLabel(hour.precipitationProbability, '%')}</dd></div><div><dt>US AQI</dt><dd>${valueLabel(hour.aqi)}</dd></div><div><dt>UV index</dt><dd>${valueLabel(hour.uv, '', 1)}</dd></div><div><dt>Temp</dt><dd>${valueLabel(hour.temperature, '°F', 1)}</dd></div></dl>`;
+  return `<dl class="metrics"><div><dt>Precipitation</dt><dd>${valueLabel(hour.precipitationProbability, '%')}</dd></div><div><dt>US AQI</dt><dd>${valueLabel(hour.aqi)}</dd></div><div><dt>UV index</dt><dd>${valueLabel(hour.uv, '', 1)}</dd></div><div><dt>Temp</dt><dd>${valueLabel(toDisplayTemperature(hour.temperature, temperatureUnit), `°${temperatureUnit}`, 1)}</dd></div></dl>`;
 }
 
 function recommendation(period, key, showDate) {
@@ -101,9 +125,9 @@ function renderHourly(hours) {
     ['precipitationProbability', 'Precipitation', '%', 0],
     ['aqi', 'US AQI', '', 0],
     ['uv', 'UV index', '', 1],
-    ['temperature', 'Temperature', '°F', 1],
+    ['temperature', 'Temperature', `°${temperatureUnit}`, 1],
   ];
-  container.innerHTML = `<table class="hourly-grid"><thead><tr><td class="hourly-corner"></td>${columns.map(({ hour, matching }) => `<th scope="col"${matching ? ' class="matching-hour"' : ''}>${view === 'week' ? `<span class="hour-date">${dateLabel(hour.time)}</span>` : ''}${timeLabel(hour.time)}${matching ? ' <span aria-hidden="true">✓</span><span class="sr-only"> · Matches cutoffs</span>' : '<span class="sr-only"> · Outside cutoffs</span>'}</th>`).join('')}</tr></thead><tbody>${criteria.map(([metric, label, suffix, digits]) => `<tr><th scope="row">${label}</th>${columns.map(({ hour, matching }) => `<td${matching ? ' class="matching-hour"' : ''}>${valueLabel(hour[metric], suffix, digits)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+  container.innerHTML = `<table class="hourly-grid"><thead><tr><td class="hourly-corner"></td>${columns.map(({ hour, matching }) => `<th scope="col"${matching ? ' class="matching-hour"' : ''}>${view === 'week' ? `<span class="hour-date">${dateLabel(hour.time)}</span>` : ''}${timeLabel(hour.time)}${matching ? ' <span aria-hidden="true">✓</span><span class="sr-only"> · Matches cutoffs</span>' : '<span class="sr-only"> · Outside cutoffs</span>'}</th>`).join('')}</tr></thead><tbody>${criteria.map(([metric, label, suffix, digits]) => `<tr><th scope="row">${label}</th>${columns.map(({ hour, matching }) => `<td${matching ? ' class="matching-hour"' : ''}>${valueLabel(metric === 'temperature' ? toDisplayTemperature(hour[metric], temperatureUnit) : hour[metric], suffix, digits)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
   container.scrollLeft = scrollLeft;
 }
 
@@ -131,7 +155,7 @@ function render() {
   $('day-picker').hidden = view !== 'day' || !day;
   $('week-table').hidden = view !== 'week';
   $('day-picker').innerHTML = analysis.days.map((item) => `<button data-date="${item.date}" aria-pressed="${item.date === selectedDate}" aria-label="${fullDate(dayTime(item))}"><span>${format(dayTime(item), { weekday: 'short' })}</span><span>${format(dayTime(item), { day: 'numeric' })}</span></button>`).join('');
-  $('forecast-heading').innerHTML = day ? (view === 'day' ? `For <em>${escape(fullDate(dayTime(day)))},</em> the best times to walk are` : 'Best this week') : '';
+  $('forecast-heading').innerHTML = day ? (view === 'day' ? `<em>${escape(headingDate(dayTime(day)))},</em> best times to walk:` : 'Best this week') : '';
   $('sunset-time').textContent = view === 'day' && day?.sunset ? `Sunset ${timeLabel(day.sunset)}` : '';
   if (!day) {
     $('recommendations').innerHTML = '<p class="no-pick">Complete forecast unavailable.</p>';
@@ -166,6 +190,11 @@ function saveWalkingHours() {
 
 function saveCutoffs() {
   try { localStorage.setItem(cutoffsStorageKey, JSON.stringify(cutoffs)); return true; }
+  catch { return false; }
+}
+
+function saveTemperatureUnit() {
+  try { localStorage.setItem(temperatureUnitStorageKey, temperatureUnit); return true; }
   catch { return false; }
 }
 
@@ -284,6 +313,18 @@ for (const id of ['day-picker', 'week-table']) $(id).addEventListener('click', (
 });
 
 $('menu-button').addEventListener('click', () => $('app-dialog').showModal());
+for (const key of temperatureFields) $(cutoffFields[key]).addEventListener('input', () => {
+  const input = $(cutoffFields[key]);
+  if (!input.validity.badInput) draftTemperatures[key] = input.value === '' ? null : toFahrenheit(input.valueAsNumber, formTemperatureUnit);
+});
+$('temperature-unit').addEventListener('change', () => {
+  for (const key of temperatureFields) {
+    if (!$(cutoffFields[key]).reportValidity()) { $('temperature-unit').value = formTemperatureUnit; return; }
+  }
+  draftTemperatures = Object.fromEntries(temperatureFields.map((key) => [key, readTemperatureInput(key)]));
+  formTemperatureUnit = $('temperature-unit').value === 'C' ? 'C' : 'F';
+  renderTemperatureInputs();
+});
 $('walking-hours-form').addEventListener('submit', (event) => {
   event.preventDefault();
   const earliest = $('earliest-time').value, latest = $('latest-time').value;
@@ -293,6 +334,7 @@ $('walking-hours-form').addEventListener('submit', (event) => {
     return;
   }
   const nextCutoffs = Object.fromEntries(Object.entries(cutoffFields).map(([key, id]) => [key, $(id).value.trim() === '' ? null : Number($(id).value)]));
+  for (const key of temperatureFields) nextCutoffs[key] = readTemperatureInput(key);
   if (nextCutoffs.minTemperature !== null && nextCutoffs.maxTemperature !== null && nextCutoffs.minTemperature > nextCutoffs.maxTemperature) {
     dialogStatus('Maximum temperature must be at or above the minimum.');
     $('maximum-temperature').focus();
@@ -300,8 +342,11 @@ $('walking-hours-form').addEventListener('submit', (event) => {
   }
   walkingHours = { earliest, latest };
   cutoffs = nextCutoffs;
-  const hoursSaved = saveWalkingHours(), cutoffsSaved = saveCutoffs();
-  if (hoursSaved && cutoffsSaved) {
+  temperatureUnit = formTemperatureUnit;
+  draftTemperatures = Object.fromEntries(temperatureFields.map((key) => [key, cutoffs[key]]));
+  renderTemperatureInputs();
+  const hoursSaved = saveWalkingHours(), cutoffsSaved = saveCutoffs(), unitSaved = saveTemperatureUnit();
+  if (hoursSaved && cutoffsSaved && unitSaved) {
     dialogStatus('Preferences saved.');
   } else {
     dialogStatus('Applied for this visit. Couldn’t save on this device.');
@@ -316,7 +361,7 @@ const pwa = initPwa({
   onStatus: (message) => { dialogStatus(message); if (!$('app-dialog').open && message) setStatus(message); },
   onInstallAvailable: (available) => { installAvailable = available; },
   beforeUpdate: async () => {
-    if (saveForecast() && saveWalkingHours() && saveCutoffs()) return true;
+    if (saveForecast() && saveWalkingHours() && saveCutoffs() && saveTemperatureUnit()) return true;
     dialogStatus('Could not save your current preferences and forecast. Try updating again when browser storage is available.');
     return false;
   },

@@ -37,6 +37,9 @@
 .paw-safety-warning{margin-top:16px;padding:10px 12px;border-left:3px solid #986b1f;background:#fff0d6;color:#6c4d16;font-size:14px;line-height:1.5}
 .paw-safety-warning a{color:inherit}
 .temperature-guidance{grid-column:1/-1;color:var(--muted)}
+.temperature-unit{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.temperature-unit select{font:inherit;font-size:16px;min-height:44px;min-width:0;max-width:65%;padding:8px;border:1px solid #829375;border-radius:3px;background:var(--paper);color:inherit}
+.temperature-unit select:focus-visible{outline:3px solid #986b1f;outline-offset:3px}
 .hourly-section{margin-top:24px}
 .hourly-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
 .hourly-heading h3{font-size:14px}

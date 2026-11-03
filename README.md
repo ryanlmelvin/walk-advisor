@@ -33,6 +33,8 @@ Use **App options → Walk start times** to set the earliest and latest allowed 
 
 The temperature settings link to [Rover’s temperature chart](https://www.rover.com/blog/hot-weather-dogs/#when-is-it-too-hot-or-cold-to-walk-a-dog) and state: “Consult a chart like this one or better yet talk to your vet! This app is not affiliated with Rover in any way.” A prominent note at the bottom of the day/week forecasts uses the [RSPCA’s five-second hand-on-ground warning](https://www.rspca.org.uk/adviceandwelfare/seasonal/summer/dogs) verbatim and links to its guidance.
 
+**App options → Temperature unit** switches between Fahrenheit (the default) and Celsius. **Save preferences** applies and remembers the choice for recommendation cards, the hourly grid, and temperature cutoffs. Existing limits convert when you switch units; changing units alone does not change matching hours or walk rankings. Forecasts and cutoff values remain stored in Fahrenheit internally.
+
 In a supported desktop or Android browser, use **App options → Install app** or the browser's install control. On iPhone/iPad, open the HTTPS site in Safari and choose **Share → Add to Home Screen**.
 
 The app saves its last location and forecast on the device. It can reopen offline, showing when the forecast was saved; saved or stale information is not a fresh observation. New forecasts need an internet connection. Updates are checked automatically on startup, on returning to the app, on reconnecting, and once a minute while visible. A top-level **Update available** button offers a downloaded update without forcing a reload. [`update.html`](public/update.html) provides network-only update recovery without clearing saved preferences or the forecast.
