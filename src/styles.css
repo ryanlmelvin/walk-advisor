@@ -34,6 +34,9 @@
 /* Native time controls need more room than two narrow dialog columns. */
 @media(max-width:380px){.time-inputs{grid-template-columns:1fr}}
 
+.paw-safety-warning{margin-top:16px;padding:10px 12px;border-left:3px solid #986b1f;background:#fff0d6;color:#6c4d16;font-size:14px;line-height:1.5}
+.paw-safety-warning a{color:inherit}
+.temperature-guidance{grid-column:1/-1;color:var(--muted)}
 .hourly-section{margin-top:24px}
 .hourly-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
 .hourly-heading h3{font-size:14px}

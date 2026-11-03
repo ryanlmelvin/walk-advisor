@@ -52,6 +52,7 @@
           <div id="hourly-table" class="table-scroll" tabindex="0" role="region" aria-labelledby="hourly-heading" aria-describedby="hourly-key"></div>
         </section>
         <p class="source-line"><a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> · <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noreferrer">CAMS</a></p>
+        <p class="paw-safety-warning">If a surface is too hot to hold your hand on for <a href="https://www.rspca.org.uk/adviceandwelfare/seasonal/summer/dogs" target="_blank" rel="noreferrer"><strong>5 seconds without pain</strong></a>, it’s too hot for your dog’s paws.</p>
       </section>
     </main>
     <dialog id="app-dialog" aria-labelledby="dialog-heading">
@@ -62,8 +63,9 @@
         <h3 class="cutoffs-heading">Cutoffs</h3>
         <p class="small muted cutoff-help">Blank means no limit.</p>
         <div class="cutoff-inputs">
-          <label for="minimum-temperature">Min temperature (°F)<input id="minimum-temperature" type="number" step="any" value="32" placeholder="No limit"></label>
-          <label for="maximum-temperature">Max temperature (°F)<input id="maximum-temperature" type="number" step="any" value="80" placeholder="No limit"></label>
+          <label for="minimum-temperature">Min temperature (°F)<input id="minimum-temperature" type="number" step="any" value="32" placeholder="No limit" aria-describedby="temperature-guidance"></label>
+          <label for="maximum-temperature">Max temperature (°F)<input id="maximum-temperature" type="number" step="any" value="80" placeholder="No limit" aria-describedby="temperature-guidance"></label>
+          <p id="temperature-guidance" class="small temperature-guidance"><a href="https://nda.nebraska.gov/sites/default/files/animal/dog_cat/Commercial%20Breeder.pdf#page=7" target="_blank" rel="noreferrer">Temperature risks by dog size (Tufts, PDF p. 7)</a>. Breed, age, health and weather also affect tolerance. Cutoffs don’t guarantee a safe walk.</p>
           <label for="maximum-precipitation">Max precipitation (%)<input id="maximum-precipitation" type="number" min="0" max="100" step="any" value="33" placeholder="No limit"></label>
           <label for="maximum-aqi">Max US AQI<input id="maximum-aqi" type="number" min="0" step="any" value="50" placeholder="No limit"></label>
           <label for="maximum-uv">Max UV index<input id="maximum-uv" type="number" min="0" step="any" value="5" placeholder="No limit"></label>
