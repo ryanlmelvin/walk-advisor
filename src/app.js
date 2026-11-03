@@ -131,7 +131,7 @@ function render() {
   $('day-picker').hidden = view !== 'day' || !day;
   $('week-table').hidden = view !== 'week';
   $('day-picker').innerHTML = analysis.days.map((item) => `<button data-date="${item.date}" aria-pressed="${item.date === selectedDate}" aria-label="${fullDate(dayTime(item))}"><span>${format(dayTime(item), { weekday: 'short' })}</span><span>${format(dayTime(item), { day: 'numeric' })}</span></button>`).join('');
-  $('forecast-heading').textContent = day ? (view === 'day' ? fullDate(dayTime(day)) : 'Best this week') : '';
+  $('forecast-heading').innerHTML = day ? (view === 'day' ? `For <em>${escape(fullDate(dayTime(day)))},</em> the best times to walk are` : 'Best this week') : '';
   $('sunset-time').textContent = view === 'day' && day?.sunset ? `Sunset ${timeLabel(day.sunset)}` : '';
   if (!day) {
     $('recommendations').innerHTML = '<p class="no-pick">Complete forecast unavailable.</p>';
