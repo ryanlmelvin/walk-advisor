@@ -1,6 +1,7 @@
 import { fetchForecast, searchLocations } from './forecast.js';
 import { analyzeForecast, isWithinWalkingHours, isWithinCutoffs } from './ranking.js';
 import { initPwa } from './pwa.js';
+import { icons } from './weather-icons.js';
 
 const $ = (id) => document.getElementById(id);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -34,11 +35,6 @@ let lastRefreshAttempt = 0;
 let refreshFailed = false;
 let installAvailable = false;
 let locationGeneration = 0;
-
-const icons = {
-  daylight: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>',
-  afterDark: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14A8.5 8.5 0 0 1 10 4a8.5 8.5 0 1 0 10 10Z"/></svg>',
-};
 
 function setStatus(message = '', error = false) {
   $('status').textContent = message;
@@ -77,7 +73,7 @@ function metrics(hour) {
 function recommendation(period, key, showDate) {
   const name = key === 'daylight' ? 'Before sunset' : 'After sunset';
   const hour = period.best;
-  return `<article class="recommendation" aria-label="${name}"><h3 class="card-heading">${icons[key]}${name}</h3>${hour
+  return `<article class="recommendation" data-period="${key}" aria-label="${name}"><h3 class="card-heading">${icons[key]}${name}</h3>${hour
     ? `<p class="walk-time">${timeLabel(hour.time)}</p>${showDate ? `<p class="walk-date">${dateLabel(hour.time)}</p>` : ''}${metrics(hour)}${period.complete ? '' : '<p class="card-note">Weather-only · AQI unavailable</p>'}`
     : `<p class="no-pick">${escape(period.reason || 'No matching hours.')}</p>`}</article>`;
 }
@@ -92,15 +88,15 @@ function timeRanges(hours, includeDate) {
   return groups.map(({ start, end }) => `${includeDate ? format(start.time, { weekday: 'short' }) + ' · ' : ''}${timeLabel(start.time)}${end.time !== start.time ? '–' + timeLabel(end.time) : ''}`);
 }
 
-function minimumBlock(title, minimum, suffix, digits = 0, secondary = '') {
+function minimumBlock(title, minimum, suffix, digits = 0, secondary = '', icon = '') {
   const labels = minimum ? timeRanges(minimum.times, view === 'week') : [];
-  return `<div class="minimum"><h3>${title}</h3><p class="minimum-value">${minimum ? valueLabel(minimum.value, suffix, digits) : '—'}</p><div class="minimum-times">${labels.length ? labels.slice(0, 2).map((label) => `<p>${label}</p>`).join('') : 'Unavailable'}${labels.length > 2 ? `<details><summary>All tied hours</summary>${labels.slice(2).map((label) => `<p>${label}</p>`).join('')}</details>` : ''}${secondary}</div></div>`;
+  return `<div class="minimum"><h3>${icon}${title}</h3><p class="minimum-value">${minimum ? valueLabel(minimum.value, suffix, digits) : '—'}</p><div class="minimum-times">${labels.length ? labels.slice(0, 2).map((label) => `<p>${label}</p>`).join('') : 'Unavailable'}${labels.length > 2 ? `<details><summary>All tied hours</summary>${labels.slice(2).map((label) => `<p>${label}</p>`).join('')}</details>` : ''}${secondary}</div></div>`;
 }
 
 function renderMinima(minima) {
   const amount = minima.precipitation;
   const amountDetail = amount ? `<details><summary>Lowest amount: ${valueLabel(amount.value, ' mm', 2)}</summary>${timeRanges(amount.times, view === 'week').map((label) => `<p>${label}</p>`).join('')}</details>` : '';
-  $('minima').innerHTML = minimumBlock('Precipitation chance', minima.precipitationProbability, '%', 0, amountDetail)
+  $('minima').innerHTML = minimumBlock('Rain / snow', minima.precipitationProbability, '%', 0, amountDetail, icons.precipitation)
     + minimumBlock('US AQI', minima.aqi, '') + minimumBlock('UV index', minima.uv, '', 1)
     + minimumBlock('Temperature', minima.temperature, '°F', 1);
 }

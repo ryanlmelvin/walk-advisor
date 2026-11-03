@@ -6,12 +6,12 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f5f6f2",
-  "theme_color": "#244d3e",
+  "background_color": "#faf8ed",
+  "theme_color": "#28543b",
   "lang": "en",
   "icons": [
-    { "src": "./icons/window-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "./icons/window-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
-    { "src": "./icons/window.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "./icons/walk-window-art-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/walk-window-art-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/walk-window-art-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
