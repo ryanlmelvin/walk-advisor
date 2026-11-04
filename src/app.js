@@ -172,7 +172,6 @@ function render() {
   const saved = refreshFailed || !navigator.onLine || ageHours >= 1;
   $('updated-at').textContent = `${saved ? 'Saved' : 'Updated'} ${ageHours > 20 ? dateLabel(forecast.fetchedAt) + ', ' : ''}${timeLabel(forecast.fetchedAt)} · ${format(now, { timeZoneName: 'short' }).split(' ').at(-1)}`;
   $('updated-at').title = `Retrieved ${format(forecast.fetchedAt, { dateStyle: 'full', timeStyle: 'short' })}. Times in ${forecast.location.timezone}.`;
-  $('location-detail').textContent = `${forecast.location.label || forecast.location.name} · ${forecast.location.latitude.toFixed(4)}, ${forecast.location.longitude.toFixed(4)} · ${forecast.location.timezone}`;
   if (!navigator.onLine) setStatus('You’re offline. Showing the last saved forecast; conditions may have changed.');
   else if (ageHours >= 1 && !loading && !refreshFailed) setStatus('This saved forecast is over an hour old. Refresh for current predictions.');
 }

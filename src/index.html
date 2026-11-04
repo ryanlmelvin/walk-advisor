@@ -77,22 +77,17 @@
       <p id="dialog-status" class="small" role="status" hidden></p>
       <details id="method-details">
         <summary>How times are picked</summary>
-        <p>We skip hours outside your times and limits. Precipitation chance, AQI, UV, and temperature get equal weight. Lower is better. Ties go to the earlier hour.</p>
-        <p>Daylight picks fall between sunrise and sunset. Night picks run from sunset to midnight. All times are local to your chosen place.</p>
-        <p>Temperature and AQI are for the start. Precipitation and UV cover the next hour. We only show dates with all four readings.</p>
-        <p>These picks are a guide. They do not ensure a safe walk for every dog.</p>
+        <p>Within your walking hours and cutoffs, suggestions balance lower rain chance, cleaner air, lower UV, and cooler temperatures equally. Times are local to your selected location.</p>
+        <p>Check conditions before heading out; each dog’s needs differ.</p>
       </details>
       <details>
         <summary>Data & location</summary>
-        <p><a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Open-Meteo</a> gives us weather data. <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">CAMS</a> gives us air data. Both use models, not a sensor in your yard. Air forecasts last about 4–5 days.</p>
-        <p>GPS gives a closer lookup than a city name. Air data still covers a broad region.</p>
-        <p><a href="https://www.iqair.com/air-quality-monitors/api" target="_blank" rel="noreferrer">IQAir’s free plan</a> gives current city data. Local station data and forecasts need a paid plan.</p>
-        <p>We save your location, settings, and last forecast on this device. We send your chosen location to Open-Meteo for the forecast.</p>
-        <p><a href="https://open-meteo.com/en/terms" target="_blank" rel="noreferrer">Free API terms</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">Data license (CC BY 4.0)</a></p>
-        <p id="location-detail" class="small muted"></p>
+        <p>Forecasts from <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> and <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noreferrer">CAMS</a> are estimates; conditions on your walk may differ. Only days with complete forecasts are shown.</p>
+        <p>Your chosen location is sent to Open-Meteo. Your location, preferences, and last forecast are saved on this device.</p>
+        <p><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">Data license (CC BY 4.0)</a></p>
       </details>
-      <details id="install-help"><summary>Install help</summary><p>iPhone or iPad: Open in Safari. Tap Share, then Add to Home Screen.</p><p>Android or desktop: Tap Install app above, or use your browser’s install menu.</p><p>Offline, you can view the last saved forecast. Go online for fresh data.</p></details>
-      <details id="about"><summary>About</summary><p>By <a href="https://ryanlmelvin.com" target="_blank" rel="noreferrer">Ryan L. Melvin</a>.</p><p><a href="https://github.com/ryanlmelvin/walk-advisor" target="_blank" rel="noreferrer">Source code</a> · <a href="./LICENSE.txt" target="_blank" rel="noreferrer">GPLv3</a></p></details>
+      <details id="install-help"><summary>Install help</summary><p>iPhone or iPad: In Safari, tap Share → Add to Home Screen.</p><p>Android or desktop: Use Install app or your browser’s install menu.</p><p>Offline, you can view your last saved forecast.</p></details>
+      <details id="about"><summary>About</summary><p>By <a href="https://ryanlmelvin.com" target="_blank" rel="noreferrer">Ryan L. Melvin</a> · <a href="https://github.com/ryanlmelvin/walk-advisor" target="_blank" rel="noreferrer">Source code</a> · <a href="./LICENSE.txt" target="_blank" rel="noreferrer">GPLv3</a></p></details>
       <p class="small muted version-line">Version <span id="version">__APP_VERSION__</span> · <a href="./update.html">Update recovery</a></p>
     </dialog>
     <script type="module" src="./app.js"></script>
