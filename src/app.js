@@ -361,7 +361,7 @@ function updateInstallButton() {
 }
 updateInstallButton();
 standalone.addEventListener('change', updateInstallButton);
-window.addEventListener('appinstalled', () => { $('install-button').hidden = true; });
+window.addEventListener('appinstalled', () => { $('install-button').hidden = true; $('install-dialog').close(); });
 
 const pwa = initPwa({
   onUpdate: (available) => { $('update-button').hidden = !available; $('dialog-update').hidden = !available; },
@@ -374,10 +374,24 @@ const pwa = initPwa({
   },
 });
 for (const id of ['update-button', 'dialog-update']) $(id).addEventListener('click', () => pwa.applyUpdate());
+$('close-install').addEventListener('click', () => $('install-dialog').close());
 $('install-button').addEventListener('click', async () => {
-  if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) dialogStatus('You’re already using the installed app.');
-  else if (installAvailable) await pwa.install();
-  else { $('app-dialog').showModal(); $('install-help').open = true; $('install-help').scrollIntoView({ block: 'nearest' }); }
+  if (installAvailable) {
+    try {
+      const choice = await pwa.install();
+      if (choice.outcome !== 'unavailable') return;
+    } catch { /* Fall back if the browser withdraws its native prompt. */ }
+  }
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const macSafari = /Mac/.test(navigator.platform) && /Safari/.test(navigator.userAgent)
+    && !/Chrome|Chromium|Edg/.test(navigator.userAgent);
+  $('install-instructions').textContent = ios
+    ? 'In Safari, tap Share, then Add to Home Screen. Leave Open as Web App on if shown, then tap Add.'
+    : macSafari
+      ? 'In Safari, choose File → Add to Dock, then Add.'
+      : 'Open your browser’s menu and choose Install app or Add to Home screen. If that option is missing, open this page in Chrome or Edge.';
+  $('install-dialog').showModal();
 });
 
 try {
