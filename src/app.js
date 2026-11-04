@@ -355,6 +355,14 @@ $('walking-hours-form').addEventListener('submit', (event) => {
 $('close-dialog').addEventListener('click', () => $('app-dialog').close());
 $('app-dialog').addEventListener('click', (event) => { if (event.target === $('app-dialog') && (event.clientX < $('app-dialog').getBoundingClientRect().left || event.clientX > $('app-dialog').getBoundingClientRect().right || event.clientY < $('app-dialog').getBoundingClientRect().top || event.clientY > $('app-dialog').getBoundingClientRect().bottom)) $('app-dialog').close(); });
 
+const standalone = window.matchMedia('(display-mode: standalone)');
+function updateInstallButton() {
+  $('install-button').hidden = standalone.matches || navigator.standalone === true;
+}
+updateInstallButton();
+standalone.addEventListener('change', updateInstallButton);
+window.addEventListener('appinstalled', () => { $('install-button').hidden = true; });
+
 const pwa = initPwa({
   onUpdate: (available) => { $('update-button').hidden = !available; $('dialog-update').hidden = !available; },
   onStatus: (message) => { dialogStatus(message); if (!$('app-dialog').open && message) setStatus(message); },
@@ -369,7 +377,7 @@ for (const id of ['update-button', 'dialog-update']) $(id).addEventListener('cli
 $('install-button').addEventListener('click', async () => {
   if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) dialogStatus('You’re already using the installed app.');
   else if (installAvailable) await pwa.install();
-  else { $('install-help').open = true; $('install-help').scrollIntoView({ block: 'nearest' }); }
+  else { $('app-dialog').showModal(); $('install-help').open = true; $('install-help').scrollIntoView({ block: 'nearest' }); }
 });
 
 try {
