@@ -382,15 +382,6 @@ $('install-button').addEventListener('click', async () => {
       if (choice.outcome !== 'unavailable') return;
     } catch { /* Fall back if the browser withdraws its native prompt. */ }
   }
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  const macSafari = /Mac/.test(navigator.platform) && /Safari/.test(navigator.userAgent)
-    && !/Chrome|Chromium|Edg/.test(navigator.userAgent);
-  $('install-instructions').textContent = ios
-    ? 'In Safari, tap Share, then Add to Home Screen. Leave Open as Web App on if shown, then tap Add.'
-    : macSafari
-      ? 'In Safari, choose File → Add to Dock, then Add.'
-      : 'Open your browser’s menu and choose Install app or Add to Home screen. If that option is missing, open this page in Chrome or Edge.';
   $('install-dialog').showModal();
 });
 
