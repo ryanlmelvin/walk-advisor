@@ -52,7 +52,9 @@
   body:has(#location-picker:not([hidden])) .app-header{padding-block:4px 0}
   #location-picker{margin-top:4px}
   #location-picker .section-heading{margin-bottom:6px}
-  .location-form{display:grid;grid-template-columns:3fr 2fr;align-items:center;gap:8px 14px}
+  .location-form{display:grid;grid-template-columns:3fr 2fr;align-items:start;gap:8px 14px}
+  .sensor-field{grid-template-columns:auto minmax(6rem,1fr);align-items:center}
+  .sensor-field p{grid-column:1/-1}
   .location-actions{grid-column:1/-1}
 }
 #purpleair-reading summary{width:fit-content;color:var(--green)}
