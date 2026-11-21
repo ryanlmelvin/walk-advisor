@@ -41,6 +41,14 @@
 .temperature-unit select{font:inherit;font-size:16px;min-height:44px;min-width:0;max-width:65%;padding:8px;border:1px solid #829375;border-radius:3px;background:var(--paper);color:inherit}
 .temperature-unit select:focus-visible{outline:3px solid #986b1f;outline-offset:3px}
 .hourly-section{margin-top:24px}
+.location-form{flex-direction:column;gap:14px}
+.sensor-field{display:grid;gap:5px;justify-items:start}
+.sensor-field label{font-size:14px;font-weight:550}
+.sensor-field input{max-width:15rem}
+.location-actions{display:flex;flex-wrap:wrap;gap:8px}
+.location-actions .location-button{margin:0}
+#purpleair-reading summary{width:fit-content;color:var(--green)}
+.purpleair-widget{display:block;width:100%;border:0;margin:6px 0}
 .hourly-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
 .hourly-heading h3{font-size:14px}
 .hourly-key{color:#1f5b39;font-size:11px;white-space:nowrap}

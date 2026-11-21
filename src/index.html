@@ -29,9 +29,16 @@
         <form id="location-form" class="location-form">
           <label class="sr-only" for="location-input">City, ZIP code, or latitude, longitude</label>
           <input id="location-input" type="search" placeholder="City, ZIP, or latitude, longitude" autocomplete="off" required maxlength="140">
-          <button id="search-button" type="submit" class="primary">Search</button>
+          <div class="sensor-field">
+            <label for="purpleair-id">PurpleAir sensor ID</label>
+            <input id="purpleair-id" type="text" inputmode="numeric" autocomplete="off" aria-describedby="purpleair-help">
+            <p id="purpleair-help" class="small muted">Optional. Your forecast works without a sensor.</p>
+          </div>
+          <div class="location-actions">
+            <button id="search-button" type="submit" class="primary">Search</button>
+            <button id="locate-button" type="button" class="location-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/></svg>Use my precise location</button>
+          </div>
         </form>
-        <button id="locate-button" class="location-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/></svg>Use my precise location</button>
         <p id="location-status" class="muted" role="status" hidden></p>
         <ul id="location-results" class="location-results" aria-label="Matching locations"></ul>
       </section>
@@ -40,6 +47,7 @@
           <button id="change-location" class="location-name" title="Change location"><span id="location-name"></span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg></button>
           <button id="refresh-button" class="icon-button" aria-label="Refresh forecast" title="Refresh forecast"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5M5.8 7a7 7 0 0 1 11.5-1L20 9M4 15l2.7 3A7 7 0 0 0 18.2 17"/></svg></button>
         </div>
+        <div id="purpleair-reading" hidden></div>
         <div class="view-bar">
           <div class="segmented" role="group" aria-label="Forecast range"><button id="day-view" aria-pressed="true">Day</button><button id="week-view" aria-pressed="false">Week</button></div>
           <p id="updated-at" class="small muted"></p>
@@ -84,10 +92,14 @@
       <details>
         <summary>Data & location</summary>
         <p>Forecasts from <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Open-Meteo</a> and <a href="https://atmosphere.copernicus.eu/" target="_blank" rel="noreferrer">CAMS</a> are estimates; conditions on your walk may differ. Only days with complete forecasts are shown.</p>
-        <p>Your chosen location is sent to Open-Meteo. Your location, preferences, and last forecast are saved on this device.</p>
+        <p>Your chosen location is sent to Open-Meteo. Opening a sensor reading sends its ID to PurpleAir. Your location, optional sensor ID, preferences, and last forecast are saved on this device.</p>
         <p><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">Data license (CC BY 4.0)</a></p>
       </details>
-      <details id="about"><summary>About</summary><p>By <a href="https://ryanlmelvin.com" target="_blank" rel="noreferrer">Ryan L. Melvin</a> · <a href="https://github.com/ryanlmelvin/walk-advisor" target="_blank" rel="noreferrer">Source code</a> · <a href="./LICENSE.txt" target="_blank" rel="noreferrer">GPLv3</a></p></details>
+      <details id="about">
+        <summary>About</summary>
+        <p>The optional PurpleAir reading shows a 10-minute PM2.5 AQI. PurpleAir applies the <a href="https://community.purpleair.com/t/purpleair-data-calibrations/103" target="_blank" rel="noreferrer">U.S. EPA correction</a> to account for sensor bias, including the effects of humidity. Walk times use the hourly AQI forecast.</p>
+        <p>By <a href="https://ryanlmelvin.com" target="_blank" rel="noreferrer">Ryan L. Melvin</a> · <a href="https://github.com/ryanlmelvin/walk-advisor" target="_blank" rel="noreferrer">Source code</a> · <a href="./LICENSE.txt" target="_blank" rel="noreferrer">GPLv3</a></p>
+      </details>
       <p><a href="https://github.com/ryanlmelvin/walk-advisor/issues/new" target="_blank" rel="noopener noreferrer">Report bug (requires GitHub account)</a></p>
       <p class="small muted version-line">Version <span id="version">__APP_VERSION__</span> · <a href="./update.html">Update recovery</a></p>
     </dialog>

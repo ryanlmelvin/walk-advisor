@@ -3,6 +3,7 @@ import { analyzeForecast, completeForecastRange, isWithinWalkingHours, isWithinC
 import { initPwa } from './pwa.js';
 import { icons } from './weather-icons.js';
 import { toDisplayTemperature, toFahrenheit, temperatureInputValue } from './temperature.js';
+import { normalizeSensorId, renderPurpleAir } from './purpleair.js';
 
 const $ = (id) => document.getElementById(id);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -46,6 +47,7 @@ let lastRefreshAttempt = 0;
 let refreshFailed = false;
 let installAvailable = false;
 let locationGeneration = 0;
+let sensorEdited = false;
 
 function setStatus(message = '', error = false) {
   $('status').textContent = message;
@@ -141,13 +143,14 @@ function renderWeek(analysis) {
 }
 
 function render() {
-  if (!forecast) return;
+  if (!forecast || !$('location-picker').hidden) return;
   const now = Date.now();
   const available = completeForecastRange(forecast, now, walkingHours);
   const analysis = analyzeForecast(available, now, walkingHours, cutoffs);
   if (!analysis.days.some((day) => day.date === selectedDate)) selectedDate = analysis.days[0]?.date;
   const day = analysis.days.find((item) => item.date === selectedDate);
   $('forecast').hidden = false;
+  renderPurpleAir($('purpleair-reading'), forecast.location.purpleAirSensorId);
   $('location-name').textContent = forecast.location.name || forecast.location.label || 'Selected location';
   $('location-name').parentElement.title = `Change location: ${forecast.location.label || ''}`;
   $('day-view').setAttribute('aria-pressed', String(view === 'day'));
@@ -218,7 +221,8 @@ async function loadForecast(location) {
   } catch (error) {
     if (controller.signal.aborted) return;
     refreshFailed = true;
-    setStatus(`${error.message}${forecast ? ' Showing the last forecast for ' + (forecast.location.name || forecast.location.label) + '.' : ''}`, true);
+    const showingSaved = forecast && $('location-picker').hidden;
+    setStatus(`${error.message}${showingSaved ? ' Showing the last forecast for ' + (forecast.location.name || forecast.location.label) + '.' : ''}`, true);
     render();
   } finally {
     if (request === controller) {
@@ -228,22 +232,77 @@ async function loadForecast(location) {
   }
 }
 
-function showLocation() {
-  $('location-picker').hidden = false;
-  $('cancel-location').hidden = !forecast;
-  $('location-input').focus();
+function savedLocationQuery() {
+  return forecast?.location.label || forecast?.location.name || '';
 }
 
-function selectLocation(location) {
+function resetLocationRequests() {
   locationGeneration++;
   searchRequest?.abort();
+  request?.abort();
+  $('locate-button').disabled = false;
   $('location-results').replaceChildren();
-  loadForecast(location);
+  locationStatus();
+  setStatus();
 }
+
+function showLocation() {
+  resetLocationRequests();
+  sensorEdited = false;
+  $('location-input').value = savedLocationQuery();
+  $('purpleair-id').value = normalizeSensorId(forecast?.location.purpleAirSensorId) || '';
+  $('purpleair-id').setCustomValidity('');
+  $('search-button').textContent = 'Save';
+  $('location-picker').hidden = false;
+  $('cancel-location').hidden = !forecast;
+  $('forecast').hidden = true;
+  $('location-input').focus();
+  $('location-input').select();
+}
+
+function readSensorId() {
+  const input = $('purpleair-id');
+  const id = normalizeSensorId(input.value);
+  input.setCustomValidity(id === null ? 'Enter a positive whole-number sensor ID, or leave it blank.' : '');
+  if (id === null) input.reportValidity();
+  return id;
+}
+
+function selectLocation(location, { retainSensor = false } = {}) {
+  const id = readSensorId();
+  if (id === null) return;
+  resetLocationRequests();
+  const samePlace = forecast && location.latitude === forecast.location.latitude && location.longitude === forecast.location.longitude;
+  // A prefilled sensor belongs to the saved place. Only an explicit entry follows a move.
+  const sensorId = !forecast || samePlace || sensorEdited || retainSensor ? id : '';
+  const nextLocation = { ...location, purpleAirSensorId: sensorId || undefined };
+  if (samePlace) {
+    forecast.location = { ...forecast.location, ...nextLocation };
+    $('location-picker').hidden = true;
+    if (!saveForecast()) setStatus('Location updated for this visit. Couldn’t save it on this device.');
+    render();
+  } else {
+    loadForecast(nextLocation);
+  }
+}
+
+$('purpleair-id').addEventListener('input', () => {
+  sensorEdited = true;
+  $('purpleair-id').setCustomValidity('');
+  if (loading) { request?.abort(); setStatus(); }
+});
+$('location-input').addEventListener('input', () => {
+  resetLocationRequests();
+  const isSaved = forecast && $('location-input').value.trim() === savedLocationQuery();
+  $('search-button').textContent = isSaved ? 'Save' : 'Search';
+  if (!sensorEdited) $('purpleair-id').value = isSaved ? normalizeSensorId(forecast.location.purpleAirSensorId) || '' : '';
+});
 
 $('location-form').addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (readSensorId() === null) return;
   const query = $('location-input').value.trim();
+  if (forecast && query === savedLocationQuery()) return selectLocation(forecast.location);
   const coordinates = query.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
   if (coordinates) {
     const latitude = Number(coordinates[1]), longitude = Number(coordinates[2]);
@@ -251,7 +310,7 @@ $('location-form').addEventListener('submit', async (event) => {
     return selectLocation({ name: 'Selected coordinates', label: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude });
   }
   if (query.length < 2) return locationStatus('Enter at least two characters to search.');
-  searchRequest?.abort();
+  resetLocationRequests();
   const controller = new AbortController();
   searchRequest = controller;
   $('search-button').disabled = true;
@@ -278,30 +337,34 @@ $('location-form').addEventListener('submit', async (event) => {
 });
 
 $('locate-button').addEventListener('click', () => {
+  if (readSensorId() === null) return;
   if (!navigator.geolocation) return locationStatus('Location access is unavailable. Search for a city or enter coordinates.');
-  const generation = ++locationGeneration;
+  resetLocationRequests();
+  const generation = locationGeneration;
   $('locate-button').disabled = true;
   locationStatus('Finding your location…');
   navigator.geolocation.getCurrentPosition((position) => {
-    $('locate-button').disabled = false;
     if (generation !== locationGeneration) return;
+    $('locate-button').disabled = false;
     const latitude = Number(position.coords.latitude.toFixed(5)), longitude = Number(position.coords.longitude.toFixed(5));
     locationStatus();
-    selectLocation({ name: 'Your location', label: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude });
+    // A repeat GPS fix can drift within the same block. A move to another neighborhood starts fresh.
+    const previous = forecast?.location;
+    const lonDelta = previous ? (longitude - previous.longitude + 540) % 360 - 180 : 0;
+    const nearby = previous && 111320 * Math.hypot(latitude - previous.latitude, lonDelta * Math.cos(latitude * Math.PI / 180)) <= 100;
+    selectLocation({ name: 'Your location', label: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude }, { retainSensor: nearby });
   }, (error) => {
-    $('locate-button').disabled = false;
     if (generation !== locationGeneration) return;
+    $('locate-button').disabled = false;
     locationStatus(error.code === 1 ? 'Location access was declined. Search for a city or enter coordinates.' : 'Could not find your location. Try again or search for a city.');
   }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 300000 });
 });
 
 $('change-location').addEventListener('click', showLocation);
 $('cancel-location').addEventListener('click', () => {
-  locationGeneration++;
-  searchRequest?.abort();
-  request?.abort();
+  resetLocationRequests();
   $('location-picker').hidden = true;
-  setStatus();
+  render();
 });
 $('refresh-button').addEventListener('click', () => forecast && loadForecast(forecast.location));
 $('day-view').addEventListener('click', () => { view = 'day'; render(); });
@@ -399,14 +462,14 @@ try {
 } catch { forecast = null; $('location-picker').hidden = false; }
 
 window.addEventListener('offline', () => { if (forecast) render(); });
-window.addEventListener('online', () => { if (forecast && !loading) loadForecast(forecast.location); });
+window.addEventListener('online', () => { if (forecast && !loading && $('location-picker').hidden) loadForecast(forecast.location); });
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'visible' || !forecast) return;
+  if (document.visibilityState !== 'visible' || !forecast || !$('location-picker').hidden) return;
   render();
   if (navigator.onLine && !loading && Date.now() - lastRefreshAttempt > 1800000) loadForecast(forecast.location);
 });
 setInterval(() => {
-  if (document.visibilityState === 'visible' && forecast && !$('app-dialog').open) {
+  if (document.visibilityState === 'visible' && forecast && $('location-picker').hidden && !$('app-dialog').open) {
     render();
     if (navigator.onLine && !loading && Date.now() - lastRefreshAttempt > 1800000) loadForecast(forecast.location);
   }
