@@ -8,6 +8,33 @@ export function normalizeSensorId(value) {
   return /^\d+$/.test(digits) && Number.isSafeInteger(number) && number > 0 ? String(number) : null;
 }
 
+export function watchSensorInputViewport(input) {
+  const doc = input.ownerDocument;
+  const view = doc.defaultView;
+  const viewport = view.visualViewport;
+  if (!viewport) return;
+  let framePending = false;
+
+  function checkAfterLayout() {
+    if (doc.activeElement !== input || framePending) return;
+    framePending = true;
+    view.requestAnimationFrame(() => {
+      framePending = false;
+      if (doc.activeElement !== input) return;
+      // A keyboard can pan the visual viewport independently of the layout viewport.
+      // Compare both edges in page coordinates after the browser has moved the caret.
+      const rect = input.getBoundingClientRect();
+      const top = rect.top - doc.documentElement.getBoundingClientRect().top;
+      if (top < viewport.pageTop || top + rect.height > viewport.pageTop + viewport.height) {
+        input.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+      }
+    });
+  }
+  input.addEventListener('focus', checkAfterLayout);
+  input.addEventListener('input', checkAfterLayout);
+  viewport.addEventListener('resize', checkAfterLayout);
+}
+
 export function sensorWidgetDocument(sensorId) {
   const id = normalizeSensorId(sensorId);
   if (!id) return '';

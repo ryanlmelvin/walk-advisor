@@ -44,7 +44,7 @@
 .location-form{flex-direction:column;gap:14px}
 .sensor-field{display:grid;gap:5px;justify-items:start}
 .sensor-field label{font-size:14px;font-weight:550}
-.sensor-field input{max-width:15rem}
+.sensor-field input{max-width:15rem;scroll-margin-block:8px}
 .location-actions{display:flex;flex-wrap:wrap;gap:8px}
 .location-actions .location-button{margin:0}
 #purpleair-reading summary{width:fit-content;color:var(--green)}

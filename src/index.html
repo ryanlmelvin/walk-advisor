@@ -25,7 +25,7 @@
     <main>
       <div id="status" class="status" role="status" aria-live="polite" hidden></div>
       <section id="location-picker" aria-labelledby="location-heading">
-        <div class="section-heading"><h2 id="location-heading">Where are you walking?</h2><button id="cancel-location" class="text-button" hidden>Cancel</button></div>
+        <div class="section-heading"><h2 id="location-heading" tabindex="-1">Where are you walking?</h2><button id="cancel-location" class="text-button" hidden>Cancel</button></div>
         <form id="location-form" class="location-form">
           <label class="sr-only" for="location-input">City, ZIP code, or latitude, longitude</label>
           <input id="location-input" type="search" placeholder="City, ZIP, or latitude, longitude" autocomplete="off" required maxlength="140">

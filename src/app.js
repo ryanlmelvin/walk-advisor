@@ -3,7 +3,7 @@ import { analyzeForecast, completeForecastRange, isWithinWalkingHours, isWithinC
 import { initPwa } from './pwa.js';
 import { icons } from './weather-icons.js';
 import { toDisplayTemperature, toFahrenheit, temperatureInputValue } from './temperature.js';
-import { normalizeSensorId, renderPurpleAir } from './purpleair.js';
+import { normalizeSensorId, renderPurpleAir, watchSensorInputViewport } from './purpleair.js';
 
 const $ = (id) => document.getElementById(id);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -48,6 +48,8 @@ let refreshFailed = false;
 let installAvailable = false;
 let locationGeneration = 0;
 let sensorEdited = false;
+let sensorInteraction = 0;
+let draftSelection = null;
 
 function setStatus(message = '', error = false) {
   $('status').textContent = message;
@@ -207,12 +209,15 @@ async function loadForecast(location) {
   loading = true;
   lastRefreshAttempt = Date.now();
   $('refresh-button').disabled = true;
-  setStatus('Getting weather and air quality…');
+  const fromPicker = !$('location-picker').hidden;
+  if (fromPicker) locationStatus('Getting weather and air quality…');
+  else setStatus('Getting weather and air quality…');
   try {
     const data = await fetchForecast(location, { signal: controller.signal });
     if (controller.signal.aborted) return;
     forecast = data;
     refreshFailed = false;
+    draftSelection = null;
     $('location-picker').hidden = true;
     locationStatus();
     const saved = saveForecast();
@@ -221,8 +226,8 @@ async function loadForecast(location) {
   } catch (error) {
     if (controller.signal.aborted) return;
     refreshFailed = true;
-    const showingSaved = forecast && $('location-picker').hidden;
-    setStatus(`${error.message}${showingSaved ? ' Showing the last forecast for ' + (forecast.location.name || forecast.location.label) + '.' : ''}`, true);
+    if (fromPicker) locationStatus(error.message);
+    else setStatus(`${error.message}${forecast ? ' Showing the last forecast for ' + (forecast.location.name || forecast.location.label) + '.' : ''}`, true);
     render();
   } finally {
     if (request === controller) {
@@ -238,6 +243,7 @@ function savedLocationQuery() {
 
 function resetLocationRequests() {
   locationGeneration++;
+  draftSelection = null;
   searchRequest?.abort();
   request?.abort();
   $('locate-button').disabled = false;
@@ -256,9 +262,16 @@ function showLocation() {
   $('location-picker').hidden = false;
   $('cancel-location').hidden = !forecast;
   $('forecast').hidden = true;
-  $('location-input').focus();
-  $('location-input').select();
+  if (window.matchMedia('(pointer: coarse)').matches) {
+    // Let the user choose a field before Safari opens and pans to a keyboard.
+    $('location-heading').focus({ preventScroll: true });
+  } else {
+    $('location-input').focus();
+    $('location-input').select();
+  }
 }
+
+watchSensorInputViewport($('purpleair-id'));
 
 function readSensorId() {
   const input = $('purpleair-id');
@@ -268,16 +281,21 @@ function readSensorId() {
   return id;
 }
 
-function selectLocation(location, { retainSensor = false } = {}) {
-  const id = readSensorId();
+function selectLocation(location, { retainSensor = false, deferSave = false } = {}) {
+  const id = deferSave ? '' : readSensorId();
   if (id === null) return;
   resetLocationRequests();
+  draftSelection = { location, retainSensor };
+  $('location-input').value = location.label || location.name;
+  $('search-button').textContent = 'Save';
+  if (deferSave) return;
   const samePlace = forecast && location.latitude === forecast.location.latitude && location.longitude === forecast.location.longitude;
   // A prefilled sensor belongs to the saved place. Only an explicit entry follows a move.
   const sensorId = !forecast || samePlace || sensorEdited || retainSensor ? id : '';
   const nextLocation = { ...location, purpleAirSensorId: sensorId || undefined };
   if (samePlace) {
     forecast.location = { ...forecast.location, ...nextLocation };
+    draftSelection = null;
     $('location-picker').hidden = true;
     if (!saveForecast()) setStatus('Location updated for this visit. Couldn’t save it on this device.');
     render();
@@ -286,10 +304,19 @@ function selectLocation(location, { retainSensor = false } = {}) {
   }
 }
 
+function pauseSelectionForSensor() {
+  sensorInteraction++;
+  if (draftSelection && loading) {
+    request?.abort();
+    locationStatus();
+  }
+}
+
+$('purpleair-id').addEventListener('focus', pauseSelectionForSensor);
 $('purpleair-id').addEventListener('input', () => {
   sensorEdited = true;
   $('purpleair-id').setCustomValidity('');
-  if (loading) { request?.abort(); setStatus(); }
+  pauseSelectionForSensor();
 });
 $('location-input').addEventListener('input', () => {
   resetLocationRequests();
@@ -302,6 +329,7 @@ $('location-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   if (readSensorId() === null) return;
   const query = $('location-input').value.trim();
+  if (draftSelection) return selectLocation(draftSelection.location, { retainSensor: draftSelection.retainSensor });
   if (forecast && query === savedLocationQuery()) return selectLocation(forecast.location);
   const coordinates = query.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
   if (coordinates) {
@@ -341,6 +369,7 @@ $('locate-button').addEventListener('click', () => {
   if (!navigator.geolocation) return locationStatus('Location access is unavailable. Search for a city or enter coordinates.');
   resetLocationRequests();
   const generation = locationGeneration;
+  const sensorAtRequest = sensorInteraction;
   $('locate-button').disabled = true;
   locationStatus('Finding your location…');
   navigator.geolocation.getCurrentPosition((position) => {
@@ -352,7 +381,9 @@ $('locate-button').addEventListener('click', () => {
     const previous = forecast?.location;
     const lonDelta = previous ? (longitude - previous.longitude + 540) % 360 - 180 : 0;
     const nearby = previous && 111320 * Math.hypot(latitude - previous.latitude, lonDelta * Math.cos(latitude * Math.PI / 180)) <= 100;
-    selectLocation({ name: 'Your location', label: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude }, { retainSensor: nearby });
+    selectLocation({ name: 'Your location', label: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`, latitude, longitude }, {
+      retainSensor: nearby, deferSave: sensorInteraction !== sensorAtRequest,
+    });
   }, (error) => {
     if (generation !== locationGeneration) return;
     $('locate-button').disabled = false;
