@@ -3,7 +3,8 @@ import { analyzeForecast, completeForecastRange, isWithinWalkingHours, isWithinC
 import { initPwa } from './pwa.js';
 import { icons } from './weather-icons.js';
 import { toDisplayTemperature, toFahrenheit, temperatureInputValue } from './temperature.js';
-import { normalizeSensorId, renderPurpleAir, watchSensorInputViewport } from './purpleair.js';
+import { normalizeSensorId, renderPurpleAir } from './purpleair.js';
+import { focusTappedLocationInput } from './location-input.js';
 
 const $ = (id) => document.getElementById(id);
 const escape = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
@@ -271,7 +272,7 @@ function showLocation() {
   }
 }
 
-watchSensorInputViewport($('purpleair-id'));
+$('location-form').addEventListener('pointerup', focusTappedLocationInput);
 
 function readSensorId() {
   const input = $('purpleair-id');

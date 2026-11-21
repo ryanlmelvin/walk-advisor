@@ -44,9 +44,17 @@
 .location-form{flex-direction:column;gap:14px}
 .sensor-field{display:grid;gap:5px;justify-items:start}
 .sensor-field label{font-size:14px;font-weight:550}
-.sensor-field input{max-width:15rem;scroll-margin-block:8px}
+.sensor-field input{max-width:15rem}
 .location-actions{display:flex;flex-wrap:wrap;gap:8px}
 .location-actions .location-button{margin:0}
+/* Keep both fields above the landscape keyboard before it opens. */
+@media (pointer:coarse) and (min-width:600px) and (max-height:550px) and (orientation:landscape){
+  body:has(#location-picker:not([hidden])) .app-header{padding-block:4px 0}
+  #location-picker{margin-top:4px}
+  #location-picker .section-heading{margin-bottom:6px}
+  .location-form{display:grid;grid-template-columns:3fr 2fr;align-items:center;gap:8px 14px}
+  .location-actions{grid-column:1/-1}
+}
 #purpleair-reading summary{width:fit-content;color:var(--green)}
 .purpleair-widget{display:block;width:100%;border:0;margin:6px 0}
 .hourly-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
